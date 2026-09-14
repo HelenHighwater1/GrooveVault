@@ -27,12 +27,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <ClerkProvider>
-      <html
-        lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      >
-        <body className="min-h-full flex flex-col">
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">
+        <ClerkProvider>
           <header className="flex items-center justify-between border-b border-black/10 px-6 py-4 dark:border-white/10">
             <Link href="/" className="font-semibold tracking-tight">
               GrooveVault
@@ -49,8 +49,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </nav>
           </header>
           {children}
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }
