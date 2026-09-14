@@ -18,8 +18,26 @@ Open http://localhost:3000.
 - `/sign-in` and `/sign-up` render Clerk's hosted components as catch-all routes.
 - `/collection` is a protected page reading the signed-in user with `currentUser()`.
 
+## End-to-end tests
+
+```bash
+npx playwright install chromium   # once
+npm run test:e2e
+```
+
+The suite drives real Clerk sign-up and sign-out against the development instance.
+Two things keep it unattended:
+
+- `@clerk/testing` fetches a Testing Token in `e2e/global.setup.ts`, which disables
+  bot protection (the captcha) for the test browser.
+- Emails using the `+clerk_test` subaddress are verified with the fixed code `424242`,
+  so no mail is sent.
+
+Both require development instance keys in `.env.local`.
+
 ## Scripts
 
 - `npm run dev` — dev server
 - `npm run build` — production build
 - `npm run lint` — ESLint
+- `npm run test:e2e` — Playwright end-to-end tests
