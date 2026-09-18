@@ -77,7 +77,7 @@ export default async function Home() {
             </p>
           </div>
 
-          <div className="flex divide-x divide-gold/30 border border-gold/30 bg-black/30">
+          <div className="flex flex-col divide-y divide-gold/30 border border-gold/30 bg-black/30 sm:flex-row sm:divide-x sm:divide-y-0">
             {statCells.map((s) => (
               <div
                 key={s.label}
