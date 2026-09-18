@@ -1,0 +1,7 @@
+{
+  "strictness": 2,
+  "triggerOnDrafts": false,
+  "triggerOnUpdates": true,
+  "statusCheck": true,
+  "ignorePatterns": "package-lock.json\nnext-env.d.ts\n.next/**\nout/**\npublic/**"
+}

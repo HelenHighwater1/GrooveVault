@@ -12,6 +12,20 @@ npm run dev
 
 Open http://localhost:3000.
 
+## Database
+
+Record and collection data lives in [Supabase](https://supabase.com)
+(Postgres), managed with the Supabase CLI (`brew install
+supabase/tap/supabase`). The schema lives in `supabase/migrations/`.
+
+- Fresh project: `supabase link --project-ref <ref>`, then
+  `supabase db push` to apply the migrations.
+- Schema changed in the dashboard? `supabase db pull` captures it as a
+  new migration.
+- Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`
+  (and as Fly.io secrets for production). The app uses the service role
+  key server-side only.
+
 ## Auth
 
 - `src/proxy.ts` runs `clerkMiddleware` and protects every route except `/`, `/sign-in`, `/sign-up`.

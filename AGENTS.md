@@ -7,3 +7,15 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Checks (must pass before committing)
+
+- `npm run lint` — ESLint
+- `npm run typecheck` — runs `next typegen` first (generated route types like `LayoutProps` live in `.next/`, so plain `tsc` fails on a fresh checkout)
+- `npm run format:check` — Prettier (fix with `npm run format`)
+- `npm run build` — requires the `NEXT_PUBLIC_CLERK_*` vars (see `.env.example` / `fly.toml`)
+- `npm run test:e2e` — Playwright auth suite (see `.agents/skills/testing-groovevault/`)
+
+# Workflow
+
+- All changes to `main` go through a PR — branch protection requires 1 approval + green `ci` check; auto-merge is disabled. Greptile reviews every PR (config: `greptile.json`).

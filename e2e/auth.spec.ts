@@ -21,7 +21,9 @@ test("a new user can sign up and reach their collection", async ({ page }) => {
 
   await page.goto("/sign-up");
   await page.getByRole("textbox", { name: /email/i }).fill(email);
-  await page.getByRole("textbox", { name: /password/i }).fill(`Groove-${Date.now()}!`);
+  await page
+    .getByRole("textbox", { name: /password/i })
+    .fill(`Groove-${Date.now()}!`);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
 
   await page.getByRole("textbox", { name: /code/i }).fill(TEST_CODE);
@@ -30,10 +32,11 @@ test("a new user can sign up and reach their collection", async ({ page }) => {
   await expect(page.getByText(email)).toBeVisible();
 
   await page.getByRole("button", { name: /open user menu/i }).click();
-  await page.getByRole("dialog").getByText(/sign out/i).click();
-  await expect(
-    page.getByRole("button", { name: /^sign in$/i }),
-  ).toBeVisible();
+  await page
+    .getByRole("dialog")
+    .getByText(/sign out/i)
+    .click();
+  await expect(page.getByRole("button", { name: /^sign in$/i })).toBeVisible();
 
   await page.goto("/collection");
   await expect(page).toHaveURL(/\/sign-in/);

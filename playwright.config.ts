@@ -3,7 +3,8 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
 
-process.env.CLERK_PUBLISHABLE_KEY ??= process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+process.env.CLERK_PUBLISHABLE_KEY ??=
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 
