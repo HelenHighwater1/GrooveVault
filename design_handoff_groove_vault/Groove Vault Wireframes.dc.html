@@ -1,0 +1,471 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="./support.js"></script>
+  </head>
+  <body>
+    <x-dc>
+      <helmet data-dc-atomics
+        ><meta name="design_doc_mode" content="canvas" /><link
+          href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Kalam:wght@400;700&display=swap"
+          rel="stylesheet"
+        /><style>
+          body {
+            margin: 0;
+            background: #f0eee9;
+            font-family: system-ui, sans-serif;
+          }
+          .dv-turn {
+            padding: 40px 44px 32px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            scroll-margin-top: 16px;
+          }
+          .dv-thd {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin: 0 0 20px;
+          }
+          .dv-tid {
+            font:
+              600 10px ui-monospace,
+              Menlo,
+              monospace;
+            padding: 3px 7px;
+            background: #1a1a1a;
+            color: #fff;
+            border-radius: 4px;
+            text-decoration: none;
+          }
+          .dv-tname {
+            font:
+              600 13px/1.2 system-ui,
+              sans-serif;
+            color: #1a1a1a;
+          }
+          .dv-opts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 28px;
+            align-items: flex-start;
+          }
+          .dv-opt {
+            flex: none;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            scroll-margin-top: 16px;
+          }
+          .dv-oid {
+            font:
+              600 10.5px ui-monospace,
+              Menlo,
+              monospace;
+            padding: 3px 7px;
+            background: rgba(0, 0, 0, 0.08);
+            color: #1a1a1a;
+            border-radius: 5px;
+            text-decoration: none;
+          }
+          .dv-olabel {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            font:
+              400 11px/1.3 system-ui,
+              sans-serif;
+            color: rgba(0, 0, 0, 0.55);
+          }
+          .dv-card {
+            max-width: 100%;
+            background: #fff;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+          }
+          .dv-opt:target .dv-oid {
+            background: #2a78d6;
+            color: #fff;
+          }
+          .dv-next {
+            margin: 22px 0 0;
+            font:
+              12px/1.5 system-ui,
+              sans-serif;
+            color: rgba(0, 0, 0, 0.5);
+          }
+          a {
+            color: #2a78d6;
+          }
+          a:hover {
+            color: #1b5fae;
+          }
+          .w {
+            font-family: "Kalam", cursive;
+            color: #1a1a1a;
+            box-sizing: border-box;
+          }
+          .w * {
+            box-sizing: border-box;
+          }
+          .bx {
+            border: 1.5px solid #1a1a1a;
+            border-radius: 3px;
+          }
+          .dsh {
+            border: 1.5px dashed #9a958c;
+            border-radius: 3px;
+          }
+          .ttl {
+            font:
+              700 22px/1.1 "Kalam",
+              cursive;
+          }
+          .sub {
+            font:
+              400 12px/1.3 "Architects Daughter",
+              cursive;
+            color: #6b665e;
+          }
+          .lbl {
+            font:
+              400 11px/1.3 "Architects Daughter",
+              cursive;
+            color: #6b665e;
+          }
+          .btn {
+            border: 1.5px solid #1a1a1a;
+            border-radius: 20px;
+            padding: 7px 14px;
+            font:
+              700 12px "Kalam",
+              cursive;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #fff;
+          }
+          .btnq {
+            border: 1.5px solid #1a1a1a;
+            border-radius: 20px;
+            padding: 7px 14px;
+            font:
+              700 12px "Kalam",
+              cursive;
+            background: #e8dfd0;
+          }
+          .row {
+            display: flex;
+            align-items: center;
+          }
+          .sleeve {
+            background: repeating-linear-gradient(
+              135deg,
+              #e6e3dd 0 5px,
+              #f4f2ee 5px 10px
+            );
+            border: 1.5px solid #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font:
+              400 9px "Architects Daughter",
+              cursive;
+            color: #6b665e;
+            text-align: center;
+          }
+          .line {
+            height: 1.5px;
+            background: #c9c4ba;
+            border-radius: 2px;
+          }
+          .acc {
+            color: #b4552c;
+          }
+          .accbx {
+            border: 1.5px solid #b4552c;
+            border-radius: 3px;
+          }
+        </style></helmet
+      >
+
+      <section class="dv-turn" id="t1">
+        <div class="dv-thd">
+          <a class="dv-tid" href="#t1">Approved</a
+          ><span class="dv-tname"
+            >Groove Vault — landing page &amp; add-new flow</span
+          >
+        </div>
+        <div class="dv-opts">
+          <div class="dv-opt" id="2a">
+            <div class="dv-olabel">
+              <a class="dv-oid" href="#2a">2a</a>Landing page · collection name
+              + four options own the top; pick of the day below
+            </div>
+            <div class="dv-card w" style="width: 680px; padding: 0">
+              <div
+                class="row"
+                style="
+                  justify-content: space-between;
+                  padding: 10px 16px;
+                  border-bottom: 1.5px solid #1a1a1a;
+                "
+              >
+                <span
+                  style="
+                    font:
+                      700 12px &quot;Kalam&quot;,
+                      cursive;
+                  "
+                  >GROOVE VAULT</span
+                >
+                <div
+                  class="dsh"
+                  style="
+                    width: 130px;
+                    height: 22px;
+                    display: flex;
+                    align-items: center;
+                    padding: 0 8px;
+                  "
+                >
+                  <span class="lbl">search</span>
+                </div>
+              </div>
+              <div
+                style="
+                  padding: 26px 24px 20px;
+                  border-bottom: 3px solid #1a1a1a;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                "
+              >
+                <div>
+                  <div class="ttl" style="font-size: 34px; line-height: 1">
+                    Ross's Records
+                  </div>
+                  <div class="sub" style="font-size: 13px">
+                    412 records · 9 crates · $6,400 est. · last spun 2 days ago
+                  </div>
+                </div>
+                <div class="row" style="gap: 10px">
+                  <div class="bx" style="flex: 1; padding: 12px 11px">
+                    <div
+                      style="
+                        font:
+                          700 13px &quot;Kalam&quot;,
+                          cursive;
+                      "
+                    >
+                      Browse
+                    </div>
+                    <div class="lbl">all 412</div>
+                  </div>
+                  <div class="bx" style="flex: 1; padding: 12px 11px">
+                    <div
+                      style="
+                        font:
+                          700 13px &quot;Kalam&quot;,
+                          cursive;
+                      "
+                    >
+                      Reorganize
+                    </div>
+                    <div class="lbl">crates &amp; order</div>
+                  </div>
+                  <div class="bx accbx" style="flex: 1; padding: 12px 11px">
+                    <div
+                      class="acc"
+                      style="
+                        font:
+                          700 13px &quot;Kalam&quot;,
+                          cursive;
+                      "
+                    >
+                      Add new
+                    </div>
+                    <div class="lbl">scan or search</div>
+                  </div>
+                  <div class="bx" style="flex: 1; padding: 12px 11px">
+                    <div
+                      style="
+                        font:
+                          700 13px &quot;Kalam&quot;,
+                          cursive;
+                      "
+                    >
+                      Stats
+                    </div>
+                    <div class="lbl">genres, decades</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="lbl" style="margin-bottom: 7px">ON THE SHELF</div>
+                  <div class="row" style="gap: 6px">
+                    <div class="sleeve" style="width: 56px; height: 56px"></div>
+                    <div class="sleeve" style="width: 56px; height: 56px"></div>
+                    <div class="sleeve" style="width: 56px; height: 56px"></div>
+                    <div class="sleeve" style="width: 56px; height: 56px"></div>
+                    <div class="sleeve" style="width: 56px; height: 56px"></div>
+                    <div class="sleeve" style="width: 56px; height: 56px"></div>
+                    <div class="sleeve" style="width: 56px; height: 56px"></div>
+                    <div class="sleeve" style="width: 56px; height: 56px"></div>
+                    <div class="lbl" style="align-self: center">more →</div>
+                  </div>
+                </div>
+              </div>
+              <div
+                style="
+                  padding: 16px 24px 20px;
+                  background: #faf8f4;
+                  display: grid;
+                  grid-template-columns: 1fr 200px;
+                  gap: 18px;
+                  align-items: start;
+                "
+              >
+                <div class="row" style="gap: 14px; align-items: flex-start">
+                  <div
+                    class="sleeve"
+                    style="width: 96px; height: 96px; flex: none"
+                  >
+                    sleeve
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 5px">
+                    <div class="lbl acc">PICK OF THE DAY</div>
+                    <div class="ttl" style="font-size: 18px">Album Title</div>
+                    <div class="sub">
+                      Artist · 1973 · Blue Note · last played Mar '24
+                    </div>
+                    <div class="row" style="gap: 7px; margin-top: 3px">
+                      <div class="btnq">Put it on</div>
+                      <div class="btn">Re-roll</div>
+                      <div class="btn">Plan the evening</div>
+                    </div>
+                  </div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px">
+                  <div class="accbx" style="padding: 11px; text-align: center">
+                    <div
+                      class="acc"
+                      style="
+                        font:
+                          700 13px &quot;Kalam&quot;,
+                          cursive;
+                      "
+                    >
+                      SURPRISE ME
+                    </div>
+                    <div class="lbl">random record</div>
+                  </div>
+                  <div class="dsh" style="padding: 8px">
+                    <div class="lbl">…or a vibe</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dv-opt" id="3a">
+            <div class="dv-olabel">
+              <a class="dv-oid" href="#3a">3a</a>Add new · scan-first modal,
+              typing is the fallback
+            </div>
+            <div
+              class="dv-card w"
+              style="width: 460px; padding: 0; background: #f4f2ee"
+            >
+              <div style="padding: 18px; background: rgba(0, 0, 0, 0.06)">
+                <div
+                  class="bx"
+                  style="
+                    background: #fff;
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                  "
+                >
+                  <div class="row" style="justify-content: space-between">
+                    <div>
+                      <div class="ttl" style="font-size: 19px">
+                        Add to Ross's Records
+                      </div>
+                      <div class="sub">record 413</div>
+                    </div>
+                    <div class="lbl">close ×</div>
+                  </div>
+                  <div
+                    class="dsh"
+                    style="
+                      padding: 22px;
+                      display: flex;
+                      flex-direction: column;
+                      align-items: center;
+                      gap: 8px;
+                      background: #faf8f4;
+                    "
+                  >
+                    <div
+                      class="bx"
+                      style="
+                        width: 62px;
+                        height: 62px;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                      "
+                    >
+                      <span class="lbl">camera</span>
+                    </div>
+                    <div
+                      style="
+                        font:
+                          700 14px &quot;Kalam&quot;,
+                          cursive;
+                      "
+                    >
+                      Hold the barcode up
+                    </div>
+                    <div class="lbl">
+                      or snap the front cover — we'll match it
+                    </div>
+                  </div>
+                  <div class="row" style="gap: 9px; align-items: center">
+                    <div class="line" style="flex: 1"></div>
+                    <span class="lbl">or</span>
+                    <div class="line" style="flex: 1"></div>
+                  </div>
+                  <div
+                    class="dsh"
+                    style="
+                      height: 32px;
+                      display: flex;
+                      align-items: center;
+                      padding: 0 10px;
+                    "
+                  >
+                    <span class="lbl">type artist, title, or catalog no.</span>
+                  </div>
+                  <div class="lbl">
+                    Adding a stack? <span class="acc">Keep scanning →</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="dv-next">
+          Hi-fi version of both lives in <strong>Groove Vault.dc.html</strong>.
+          Try next: "wireframe the reorganize screen" · "wireframe the
+          plan-the-evening modal".
+        </p>
+      </section>
+    </x-dc>
+  </body>
+</html>

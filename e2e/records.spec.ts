@@ -33,7 +33,7 @@ test("a user can find a record via Discogs search", async ({ page }) => {
 
   await page.goto("/collection/add");
   await page.getByRole("searchbox").fill("fleetwood mac rumours");
-  await page.getByRole("button", { name: /^search$/i }).click();
+  await page.getByRole("button", { name: /^look up$/i }).click();
 
   const result = page.getByRole("button", { name: /rumours/i }).first();
   await expect(result).toBeVisible({ timeout: 15_000 });
@@ -47,7 +47,7 @@ test("a user can find a record via Discogs search", async ({ page }) => {
   // Searching again flags results that share the owned master.
   await page.getByRole("button", { name: /add another/i }).click();
   await page.getByRole("searchbox").fill("fleetwood mac rumours");
-  await page.getByRole("button", { name: /^search$/i }).click();
+  await page.getByRole("button", { name: /^look up$/i }).click();
   await expect(page.getByText(/in your collection/i).first()).toBeVisible({
     timeout: 15_000,
   });
