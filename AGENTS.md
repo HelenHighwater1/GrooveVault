@@ -18,4 +18,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Workflow
 
-- All changes to `main` go through a PR — branch protection requires 1 approval + green `ci` check; auto-merge is disabled. Greptile reviews every PR (config: `greptile.json`).
+- All changes to `main` go through a PR — branch protection requires green `ci` + `e2e` checks; approvals are not required (solo repo — GitHub never lets the author approve their own PR). Greptile reviews every PR (config: `greptile.json`).

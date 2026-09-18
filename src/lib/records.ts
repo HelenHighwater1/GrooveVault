@@ -30,13 +30,14 @@ const COLUMNS =
 export async function listRecords(
   collectionId: string,
   limit: number,
+  offset = 0,
 ): Promise<CollectionRecord[]> {
   const { data, error } = await getSupabase()
     .from("records")
     .select(COLUMNS)
     .eq("collection_id", collectionId)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
   if (error) throw error;
   return data;
 }

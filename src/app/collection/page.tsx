@@ -7,7 +7,6 @@ import { countRecords, listRecords } from "@/lib/records";
 import { RenameCollectionForm } from "./rename-form";
 
 const PAGE_SIZE = 60;
-const MAX_LIMIT = 500;
 
 export default async function CollectionPage({
   searchParams,
@@ -15,17 +14,19 @@ export default async function CollectionPage({
   const user = await currentUser();
   if (!user) redirect("/sign-in");
 
-  const requested = Number((await searchParams).limit);
-  const limit =
-    Number.isInteger(requested) && requested > 0
-      ? Math.min(requested, MAX_LIMIT)
-      : PAGE_SIZE;
+  const requested = Number((await searchParams).page);
+  const page = Number.isInteger(requested) && requested > 0 ? requested : 1;
 
   const collection = await getOrCreateCollection(user.id);
   const [records, total] = await Promise.all([
-    listRecords(collection.id, limit),
+    listRecords(collection.id, PAGE_SIZE, (page - 1) * PAGE_SIZE),
     countRecords(collection.id),
   ]);
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  if (page > 1 && page > totalPages) {
+    redirect(`/collection?page=${Math.max(totalPages, 1)}`);
+  }
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-8">
@@ -98,13 +99,36 @@ export default async function CollectionPage({
         </ul>
       )}
 
-      {records.length < total && (
-        <Link
-          href={`/collection?limit=${limit + PAGE_SIZE}`}
-          className="self-center rounded-full border border-black/20 px-4 py-1.5 text-sm dark:border-white/20"
-        >
-          Load more ({records.length} of {total})
-        </Link>
+      {totalPages > 1 && (
+        <nav className="flex items-center justify-center gap-4 self-center">
+          {page > 1 ? (
+            <Link
+              href={`/collection?page=${page - 1}`}
+              className="rounded-full border border-black/20 px-4 py-1.5 text-sm dark:border-white/20"
+            >
+              Previous
+            </Link>
+          ) : (
+            <span className="rounded-full border border-black/10 px-4 py-1.5 text-sm text-black/40 dark:border-white/10 dark:text-white/40">
+              Previous
+            </span>
+          )}
+          <span className="text-sm text-black/60 dark:text-white/60">
+            Page {page} of {totalPages}
+          </span>
+          {page < totalPages ? (
+            <Link
+              href={`/collection?page=${page + 1}`}
+              className="rounded-full border border-black/20 px-4 py-1.5 text-sm dark:border-white/20"
+            >
+              Next
+            </Link>
+          ) : (
+            <span className="rounded-full border border-black/10 px-4 py-1.5 text-sm text-black/40 dark:border-white/10 dark:text-white/40">
+              Next
+            </span>
+          )}
+        </nav>
       )}
     </main>
   );
