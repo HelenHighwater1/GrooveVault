@@ -29,14 +29,25 @@ const COLUMNS =
 
 export async function listRecords(
   collectionId: string,
+  limit: number,
 ): Promise<CollectionRecord[]> {
   const { data, error } = await getSupabase()
     .from("records")
     .select(COLUMNS)
     .eq("collection_id", collectionId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(limit);
   if (error) throw error;
   return data;
+}
+
+export async function countRecords(collectionId: string): Promise<number> {
+  const { count, error } = await getSupabase()
+    .from("records")
+    .select("id", { count: "exact", head: true })
+    .eq("collection_id", collectionId);
+  if (error) throw error;
+  return count ?? 0;
 }
 
 export async function addRecord(
