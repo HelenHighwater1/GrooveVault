@@ -45,6 +45,10 @@ Clerk's markup changes between versions; these were correct for `@clerk/nextjs` 
 
 - Sign-up submit is `getByRole("button", { name: "Continue", exact: true })` — a
   non-exact match also hits the Google social button.
+- Entering the OTP races Clerk's `prepare_verification` request — wait for that
+  response after clicking Continue, then use `pressSequentially` (not `fill`) so
+  auto-submit fires reliably. Skipping the wait leaves tests stuck on
+  `/sign-up/verify-email-address` until timeout (see `e2e/helpers.ts`).
 - The password field is `getByRole("textbox", { name: /password/i })`; `getByLabel`
   also matches the show/hide toggle.
 - The `UserButton` trigger is `getByRole("button", { name: /open user menu/i })`, and
