@@ -18,8 +18,15 @@ export async function signUpTestUser(page: Page) {
   await page
     .getByRole("textbox", { name: /password/i })
     .fill(`Groove-${Date.now()}!`);
+  const preparedVerification = page.waitForResponse(
+    (resp) =>
+      resp.url().includes("prepare_verification") && resp.status() === 200,
+  );
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByRole("textbox", { name: /code/i }).fill(TEST_CODE);
+  await preparedVerification;
+  await page
+    .getByRole("textbox", { name: /code/i })
+    .pressSequentially(TEST_CODE);
 
   await expect(page).toHaveURL(/\/collection/, { timeout: 30_000 });
   return email;

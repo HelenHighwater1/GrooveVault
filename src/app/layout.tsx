@@ -48,7 +48,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   Groove Vault
                 </span>
                 <span className="font-body text-[8.5px] font-light uppercase tracking-[.42em] text-cream/40">
-                  Est. 1998 · Side A
+                  Est. 2026 · Side A
                 </span>
               </span>
             </Link>
