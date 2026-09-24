@@ -2,14 +2,16 @@ app = "groovevault"
 primary_region = "iad"
 
 [build.args]
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_cmVuZXdpbmctaWJleC04NDg5LmNsZXJrLmFjY291bnRzLmRldiQ"
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_live_Y2xlcmsubXlncm9vdmV2YXVsdC5jb20k"
   NEXT_PUBLIC_CLERK_SIGN_IN_URL = "/sign-in"
   NEXT_PUBLIC_CLERK_SIGN_UP_URL = "/sign-up"
   NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL = "/collection"
   NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL = "/collection"
+  NEXT_PUBLIC_SENTRY_DSN = "https://405b1154a1dab3248c2c759fc8a38e85@o4512137819848704.ingest.us.sentry.io/4512137837215745"
 
 [env]
   PORT = "3000"
+  SENTRY_DSN = "https://405b1154a1dab3248c2c759fc8a38e85@o4512137819848704.ingest.us.sentry.io/4512137837215745"
 
 [http_service]
   internal_port = 3000
