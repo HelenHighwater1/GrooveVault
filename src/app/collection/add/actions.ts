@@ -18,21 +18,24 @@ import {
 export type SearchResultView = DiscogsSearchResult & { owned: boolean };
 
 export type SearchState =
-  { results: SearchResultView[]; query: string } | { error: string } | null;
+  | { results: SearchResultView[]; query: string }
+  | { error: string; query: string }
+  | null;
 
 export async function searchDiscogsAction(
   _prev: SearchState,
   formData: FormData,
 ): Promise<SearchState> {
-  const { userId } = await auth();
-  if (!userId) return { error: "You must be signed in." };
-  if (!discogsConfigured()) {
-    return { error: "Discogs search isn't configured yet." };
-  }
-
   const raw = formData.get("query");
   const query = typeof raw === "string" ? raw.trim() : "";
-  if (!query) return { error: "Type something to search for." };
+
+  const { userId } = await auth();
+  if (!userId) return { error: "You must be signed in.", query };
+  if (!discogsConfigured()) {
+    return { error: "Discogs search isn't configured yet.", query };
+  }
+
+  if (!query) return { error: "Type something to search for.", query };
 
   try {
     const [results, collection] = await Promise.all([
@@ -52,7 +55,7 @@ export async function searchDiscogsAction(
       })),
     };
   } catch {
-    return { error: "Search failed — try again or enter it manually." };
+    return { error: "Search failed — try again or enter it manually.", query };
   }
 }
 

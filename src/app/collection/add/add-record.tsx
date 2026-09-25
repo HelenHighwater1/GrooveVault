@@ -198,7 +198,7 @@ function SearchPanel({
         </button>
       </form>
 
-      {state && "error" in state && trimmedQuery.length > 0 && (
+      {state && "error" in state && state.query === trimmedQuery && (
         <p className="text-sm text-red-400">{state.error}</p>
       )}
       {selectError && <p className="text-sm text-red-400">{selectError}</p>}
