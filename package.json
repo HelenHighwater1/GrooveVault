@@ -10,7 +10,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:clean-users": "node e2e/clerk-test-users.js"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.1",
