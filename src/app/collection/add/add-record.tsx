@@ -160,16 +160,22 @@ function SearchPanel({
   const [query, setQuery] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
   const lastSubmittedRef = useRef("");
+  const pendingRef = useRef(false);
+
+  useEffect(() => {
+    pendingRef.current = pending;
+  }, [pending]);
 
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2 || q === lastSubmittedRef.current) return;
+    if (pending || q.length < 2 || q === lastSubmittedRef.current) return;
     const timer = setTimeout(() => {
+      if (pendingRef.current || lastSubmittedRef.current === q) return;
       lastSubmittedRef.current = q;
       formRef.current?.requestSubmit();
     }, 350);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, pending]);
 
   const trimmedQuery = query.trim();
 
