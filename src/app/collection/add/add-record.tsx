@@ -1,17 +1,23 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import {
+  useActionState,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { CollectionRecord } from "@/lib/records";
 import { Eyebrow, Panel, VinylDisc } from "@/components/deco";
 import {
   addRecordAction,
-  searchDiscogsAction,
   selectReleaseAction,
   type ConfirmDraft,
-  type SearchResultView,
 } from "./actions";
+import type { SearchResultView, SearchState } from "@/lib/search";
 
 const EMPTY_DRAFT: ConfirmDraft = {
   artist: "",
@@ -31,9 +37,13 @@ const EMPTY_DRAFT: ConfirmDraft = {
 export function AddRecord({
   discogsEnabled,
   nextNumber,
+  initialQuery,
+  initialState,
 }: {
   discogsEnabled: boolean;
   nextNumber: number;
+  initialQuery: string;
+  initialState: SearchState;
 }) {
   const [draft, setDraft] = useState<ConfirmDraft | null>(null);
   const [draftKey, setDraftKey] = useState(0);
@@ -112,6 +122,8 @@ export function AddRecord({
               onSelect={selectResult}
               selecting={selecting}
               selectError={selectError}
+              initialQuery={initialQuery}
+              initialState={initialState}
             />
           ) : (
             <p className="border border-gold/40 bg-gold/10 px-3.5 py-2.5 font-body text-[12px] text-gold-light/90">
@@ -142,23 +154,79 @@ function SearchPanel({
   onSelect,
   selecting,
   selectError,
+  initialQuery,
+  initialState,
 }: {
   onSelect: (r: SearchResultView) => void;
   selecting: boolean;
   selectError: string | null;
+  initialQuery: string;
+  initialState: SearchState;
 }) {
-  const [state, formAction, pending] = useActionState(
-    searchDiscogsAction,
-    null,
-  );
+  const [state, setState] = useState<SearchState>(initialState);
+  const [pending, setPending] = useState(false);
+  const [query, setQuery] = useState(initialQuery);
+  const abortRef = useRef<AbortController | null>(null);
+  const lastSubmittedRef = useRef(initialState ? initialQuery.trim() : "");
+
+  const runSearch = useCallback(async (q: string) => {
+    // Superseded searches are aborted client-side and, via the request signal,
+    // stop their Discogs work server-side too.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    lastSubmittedRef.current = q;
+    setPending(true);
+    try {
+      const res = await fetch(
+        `/collection/add/search?q=${encodeURIComponent(q)}`,
+        { signal: controller.signal },
+      );
+      const data = (await res.json()) as SearchState;
+      if (!controller.signal.aborted) setState(data);
+    } catch {
+      if (!controller.signal.aborted) {
+        setState({
+          error: "Search failed — try again or enter it manually.",
+          query: q,
+        });
+      }
+    } finally {
+      if (abortRef.current === controller) setPending(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2 || q === lastSubmittedRef.current) return;
+    const timer = setTimeout(() => void runSearch(q), 350);
+    return () => clearTimeout(timer);
+  }, [query, runSearch]);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  const trimmedQuery = query.trim();
 
   return (
     <div className="flex flex-col gap-4">
-      <form action={formAction} className="lookup">
+      <form
+        className="lookup"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (
+            trimmedQuery &&
+            !(pending && trimmedQuery === lastSubmittedRef.current)
+          ) {
+            void runSearch(trimmedQuery);
+          }
+        }}
+      >
         <input
           type="search"
           name="query"
           required
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
           placeholder="Artist, title, or catalog no."
           aria-label="Search Discogs"
           className="lookup-input"
@@ -168,12 +236,12 @@ function SearchPanel({
         </button>
       </form>
 
-      {state && "error" in state && (
+      {state && "error" in state && state.query === trimmedQuery && (
         <p className="text-sm text-red-400">{state.error}</p>
       )}
       {selectError && <p className="text-sm text-red-400">{selectError}</p>}
 
-      {state && "results" in state && (
+      {state && "results" in state && state.query === trimmedQuery && (
         <div className="flex flex-col gap-2.5">
           <p className="font-accent text-[15px] italic text-cream/60">
             {state.results.length === 0

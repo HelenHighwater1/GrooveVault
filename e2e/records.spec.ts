@@ -32,8 +32,8 @@ test("a user can find a record via Discogs search", async ({ page }) => {
   await signUpTestUser(page);
 
   await page.goto("/collection/add");
+  // Results appear as you type — no "Look up" click needed.
   await page.getByRole("searchbox").fill("fleetwood mac rumours");
-  await page.getByRole("button", { name: /^look up$/i }).click();
 
   const result = page.getByRole("button", { name: /rumours/i }).first();
   await expect(result).toBeVisible({ timeout: 15_000 });

@@ -4,7 +4,8 @@ import { expect, type Page } from "@playwright/test";
 const TEST_CODE = "424242";
 
 export function testEmail() {
-  return `groovevault-${Date.now()}-${Math.random()
+  const runTag = (process.env.E2E_RUN_ID ?? "local").replace(/[^a-z0-9]/gi, "");
+  return `groovevault-${Date.now()}-${runTag}-${Math.random()
     .toString(36)
     .slice(2, 8)}+clerk_test@example.com`;
 }

@@ -38,6 +38,12 @@ It works because of two Clerk testing features:
 - Test accounts use the `+clerk_test` email subaddress (e.g.
   `groovevault-1712345+clerk_test@example.com`) and always verify with the code `424242`,
   so no real email is sent. Generate a unique local part per run to avoid collisions.
+- The dev instance caps at 100 users, and each test signs up a fresh account. A Playwright
+  global teardown (`e2e/global.teardown.ts`) deletes test users after every run — scoped to
+  the current run's `E2E_RUN_ID` (set in `playwright.config.ts`) plus any test users older
+  than a day, so concurrent runs' accounts are safe. `npm run test:clean-users` sweeps all
+  test users for stragglers. Sign-up failures with "You have reached your limit of 100
+  users" mean that cap was hit.
 
 ## Selector notes for Clerk components
 
