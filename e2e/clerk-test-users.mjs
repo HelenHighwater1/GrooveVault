@@ -3,7 +3,7 @@
 // instance hits its 100-user cap and sign-ups fail. Runs automatically via
 // playwright globalTeardown; also runnable by hand:
 //   npm run test:clean-users
-const dotenv = require("dotenv");
+import dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
 
@@ -53,11 +53,7 @@ async function deleteClerkTestUsers() {
   console.log(`Deleted ${deleted} Clerk test user(s)`);
 }
 
-module.exports = { deleteClerkTestUsers };
-
-if (require.main === module) {
-  deleteClerkTestUsers().catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
-}
+deleteClerkTestUsers().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
