@@ -11,7 +11,7 @@ export function RenameCollectionForm({ currentName }: { currentName: string }) {
 
   return (
     <form action={formAction} className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
+      <div className="flex items-stretch gap-2">
         <input
           type="text"
           name="name"
