@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { CollectionRecord } from "@/lib/records";
@@ -151,14 +157,38 @@ function SearchPanel({
     searchDiscogsAction,
     null,
   );
+  const [query, setQuery] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
+  const lastSubmittedRef = useRef("");
+
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2 || q === lastSubmittedRef.current) return;
+    const timer = setTimeout(() => {
+      lastSubmittedRef.current = q;
+      formRef.current?.requestSubmit();
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const trimmedQuery = query.trim();
 
   return (
     <div className="flex flex-col gap-4">
-      <form action={formAction} className="lookup">
+      <form
+        ref={formRef}
+        action={formAction}
+        onSubmit={() => {
+          lastSubmittedRef.current = trimmedQuery;
+        }}
+        className="lookup"
+      >
         <input
           type="search"
           name="query"
           required
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
           placeholder="Artist, title, or catalog no."
           aria-label="Search Discogs"
           className="lookup-input"
@@ -168,12 +198,12 @@ function SearchPanel({
         </button>
       </form>
 
-      {state && "error" in state && (
+      {state && "error" in state && trimmedQuery.length > 0 && (
         <p className="text-sm text-red-400">{state.error}</p>
       )}
       {selectError && <p className="text-sm text-red-400">{selectError}</p>}
 
-      {state && "results" in state && (
+      {state && "results" in state && state.query === trimmedQuery && (
         <div className="flex flex-col gap-2.5">
           <p className="font-accent text-[15px] italic text-cream/60">
             {state.results.length === 0
