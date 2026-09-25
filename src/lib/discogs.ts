@@ -7,11 +7,12 @@ export function discogsConfigured(): boolean {
   return Boolean(process.env.DISCOGS_TOKEN);
 }
 
-async function discogsFetch<T>(path: string): Promise<T> {
+async function discogsFetch<T>(path: string, signal?: AbortSignal): Promise<T> {
   const token = process.env.DISCOGS_TOKEN;
   if (!token) throw new Error("Missing DISCOGS_TOKEN");
 
   const res = await fetch(`${DISCOGS_API}${path}`, {
+    signal,
     headers: {
       Authorization: `Discogs token=${token}`,
       "User-Agent": USER_AGENT,
@@ -55,9 +56,11 @@ export type DiscogsSearchResult = {
 
 export async function searchReleases(
   query: string,
+  signal?: AbortSignal,
 ): Promise<DiscogsSearchResult[]> {
   const data = await discogsFetch<SearchResponse>(
     `/database/search?type=release&per_page=20&q=${encodeURIComponent(query)}`,
+    signal,
   );
   return data.results.map((r) => ({
     releaseId: r.id,

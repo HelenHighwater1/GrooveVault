@@ -2,6 +2,7 @@
 
 import {
   useActionState,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -13,10 +14,10 @@ import type { CollectionRecord } from "@/lib/records";
 import { Eyebrow, Panel, VinylDisc } from "@/components/deco";
 import {
   addRecordAction,
-  searchDiscogsAction,
   selectReleaseAction,
   type ConfirmDraft,
   type SearchResultView,
+  type SearchState,
 } from "./actions";
 
 const EMPTY_DRAFT: ConfirmDraft = {
@@ -153,41 +154,58 @@ function SearchPanel({
   selecting: boolean;
   selectError: string | null;
 }) {
-  const [state, formAction, pending] = useActionState(
-    searchDiscogsAction,
-    null,
-  );
+  const [state, setState] = useState<SearchState>(null);
+  const [pending, setPending] = useState(false);
   const [query, setQuery] = useState("");
-  const formRef = useRef<HTMLFormElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const lastSubmittedRef = useRef("");
-  const pendingRef = useRef(false);
 
-  useEffect(() => {
-    pendingRef.current = pending;
-  }, [pending]);
+  const runSearch = useCallback(async (q: string) => {
+    // Superseded searches are aborted client-side and, via the request signal,
+    // stop their Discogs work server-side too.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    lastSubmittedRef.current = q;
+    setPending(true);
+    try {
+      const res = await fetch(
+        `/collection/add/search?q=${encodeURIComponent(q)}`,
+        { signal: controller.signal },
+      );
+      const data = (await res.json()) as SearchState;
+      if (!controller.signal.aborted) setState(data);
+    } catch {
+      if (!controller.signal.aborted) {
+        setState({
+          error: "Search failed — try again or enter it manually.",
+          query: q,
+        });
+      }
+    } finally {
+      if (abortRef.current === controller) setPending(false);
+    }
+  }, []);
 
   useEffect(() => {
     const q = query.trim();
-    if (pending || q.length < 2 || q === lastSubmittedRef.current) return;
-    const timer = setTimeout(() => {
-      if (pendingRef.current || lastSubmittedRef.current === q) return;
-      lastSubmittedRef.current = q;
-      formRef.current?.requestSubmit();
-    }, 350);
+    if (q.length < 2 || q === lastSubmittedRef.current) return;
+    const timer = setTimeout(() => void runSearch(q), 350);
     return () => clearTimeout(timer);
-  }, [query, pending]);
+  }, [query, runSearch]);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const trimmedQuery = query.trim();
 
   return (
     <div className="flex flex-col gap-4">
       <form
-        ref={formRef}
-        action={formAction}
-        onSubmit={() => {
-          lastSubmittedRef.current = trimmedQuery;
-        }}
         className="lookup"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (trimmedQuery) void runSearch(trimmedQuery);
+        }}
       >
         <input
           type="search"
@@ -199,7 +217,7 @@ function SearchPanel({
           aria-label="Search Discogs"
           className="lookup-input"
         />
-        <button type="submit" disabled={pending} className="lookup-action">
+        <button type="submit" className="lookup-action">
           {pending ? "Looking…" : "Look up"}
         </button>
       </form>
