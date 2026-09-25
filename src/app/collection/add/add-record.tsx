@@ -16,9 +16,8 @@ import {
   addRecordAction,
   selectReleaseAction,
   type ConfirmDraft,
-  type SearchResultView,
-  type SearchState,
 } from "./actions";
+import type { SearchResultView, SearchState } from "@/lib/search";
 
 const EMPTY_DRAFT: ConfirmDraft = {
   artist: "",
@@ -38,9 +37,13 @@ const EMPTY_DRAFT: ConfirmDraft = {
 export function AddRecord({
   discogsEnabled,
   nextNumber,
+  initialQuery,
+  initialState,
 }: {
   discogsEnabled: boolean;
   nextNumber: number;
+  initialQuery: string;
+  initialState: SearchState;
 }) {
   const [draft, setDraft] = useState<ConfirmDraft | null>(null);
   const [draftKey, setDraftKey] = useState(0);
@@ -119,6 +122,8 @@ export function AddRecord({
               onSelect={selectResult}
               selecting={selecting}
               selectError={selectError}
+              initialQuery={initialQuery}
+              initialState={initialState}
             />
           ) : (
             <p className="border border-gold/40 bg-gold/10 px-3.5 py-2.5 font-body text-[12px] text-gold-light/90">
@@ -149,16 +154,20 @@ function SearchPanel({
   onSelect,
   selecting,
   selectError,
+  initialQuery,
+  initialState,
 }: {
   onSelect: (r: SearchResultView) => void;
   selecting: boolean;
   selectError: string | null;
+  initialQuery: string;
+  initialState: SearchState;
 }) {
-  const [state, setState] = useState<SearchState>(null);
+  const [state, setState] = useState<SearchState>(initialState);
   const [pending, setPending] = useState(false);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const abortRef = useRef<AbortController | null>(null);
-  const lastSubmittedRef = useRef("");
+  const lastSubmittedRef = useRef(initialState ? initialQuery.trim() : "");
 
   const runSearch = useCallback(async (q: string) => {
     // Superseded searches are aborted client-side and, via the request signal,
@@ -204,7 +213,12 @@ function SearchPanel({
         className="lookup"
         onSubmit={(e) => {
           e.preventDefault();
-          if (trimmedQuery) void runSearch(trimmedQuery);
+          if (
+            trimmedQuery &&
+            !(pending && trimmedQuery === lastSubmittedRef.current)
+          ) {
+            void runSearch(trimmedQuery);
+          }
         }}
       >
         <input
@@ -217,7 +231,7 @@ function SearchPanel({
           aria-label="Search Discogs"
           className="lookup-input"
         />
-        <button type="submit" className="lookup-action">
+        <button type="submit" disabled={pending} className="lookup-action">
           {pending ? "Looking…" : "Look up"}
         </button>
       </form>

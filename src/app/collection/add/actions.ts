@@ -3,19 +3,12 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { getOrCreateCollection } from "@/lib/collections";
-import { getRelease, type DiscogsSearchResult } from "@/lib/discogs";
+import { getRelease } from "@/lib/discogs";
 import {
   addRecord,
   findRecordsByMasterIds,
   type CollectionRecord,
 } from "@/lib/records";
-
-export type SearchResultView = DiscogsSearchResult & { owned: boolean };
-
-export type SearchState =
-  | { results: SearchResultView[]; query: string }
-  | { error: string; query: string }
-  | null;
 
 export type ConfirmDraft = {
   artist: string;
