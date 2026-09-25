@@ -49,6 +49,18 @@ Two things keep it unattended:
 
 Both require development instance keys in `.env.local`.
 
+## Deploying
+
+Deployed on Fly.io at https://mygroovevault.com (`fly.toml`).
+
+```bash
+flyctl deploy --build-secret SENTRY_AUTH_TOKEN="$SENTRY_AUTH_TOKEN"
+```
+
+`SENTRY_AUTH_TOKEN` is a Sentry org auth token used only at build time to
+upload source maps (see `.env.example`). Omit `--build-secret` and the
+deploy still works — stack traces just lose source mapping.
+
 ## Scripts
 
 - `npm run dev` — dev server

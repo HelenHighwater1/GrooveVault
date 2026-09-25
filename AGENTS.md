@@ -20,3 +20,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - All changes to `main` go through a PR — branch protection requires green `ci` + `e2e` checks. Greptile reviews every PR (config: `greptile.json`).
 - NEVER merge PRs — not with `gh pr merge`, `--auto`, or `--admin`. Open the PR, report check status, and stop. The user reviews and merges through GitHub.
+- Deploy with `flyctl deploy --build-secret SENTRY_AUTH_TOKEN="$SENTRY_AUTH_TOKEN"` — the Dockerfile mounts it as a build secret for Sentry source-map upload. A plain `flyctl deploy` succeeds but silently skips the upload.
