@@ -11,12 +11,14 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import type { CollectionRecord } from "@/lib/records";
-import { Eyebrow, Panel, VinylDisc } from "@/components/deco";
+import { Eyebrow, Panel } from "@/components/deco";
 import {
   addRecordAction,
   selectReleaseAction,
   type ConfirmDraft,
+  type ScanState,
 } from "./actions";
+import { Scanner } from "./scanner";
 import type { SearchResultView, SearchState } from "@/lib/search";
 
 const EMPTY_DRAFT: ConfirmDraft = {
@@ -50,6 +52,7 @@ export function AddRecord({
   const [ownedPressings, setOwnedPressings] = useState<CollectionRecord[]>([]);
   const [selectError, setSelectError] = useState<string | null>(null);
   const [selecting, startSelecting] = useTransition();
+  const [scanState, setScanState] = useState<ScanState>(null);
 
   function openDraft(next: ConfirmDraft, owned: CollectionRecord[]) {
     setOwnedPressings(owned);
@@ -67,6 +70,20 @@ export function AddRecord({
       }
       openDraft(res.draft, res.ownedPressings);
     });
+  }
+
+  function handleScanResults(state: ScanState) {
+    setScanState(state);
+    // A lone barcode hit is the exact pressing — skip the pick list and go
+    // straight to the confirm draft.
+    if (
+      state &&
+      "results" in state &&
+      state.kind === "barcode" &&
+      state.results.length === 1
+    ) {
+      selectResult(state.results[0]);
+    }
   }
 
   return (
@@ -97,19 +114,31 @@ export function AddRecord({
         />
       ) : (
         <>
-          <div className="scanner-well">
-            <span className="scan-line" aria-hidden />
-            <span className="gold-chip absolute right-3 top-3">Soon</span>
-            <div className="scan-ring">
-              <VinylDisc speed={9} className="w-[58px]" />
+          {discogsEnabled && <Scanner onResults={handleScanResults} />}
+
+          {scanState && "error" in scanState && (
+            <p className="font-body text-[12px] text-red-400">
+              {scanState.error}
+            </p>
+          )}
+          {scanState && "results" in scanState && (
+            <div className="flex flex-col gap-2.5">
+              <p className="font-accent text-[15px] italic text-cream/60">
+                {scanState.results.length === 0
+                  ? scanState.kind === "barcode"
+                    ? "No match for that barcode — snap the cover or search below."
+                    : "No match from that photo — try a clearer shot or search below."
+                  : "From your scan — pick your pressing:"}
+              </p>
+              {scanState.results.length > 0 && (
+                <ResultList
+                  results={scanState.results}
+                  selecting={selecting}
+                  onSelect={selectResult}
+                />
+              )}
             </div>
-            <p className="font-display text-[25px] leading-none text-cream">
-              Hold the barcode up
-            </p>
-            <p className="font-accent text-[15px] italic text-cream/60">
-              Or snap the front cover — we&apos;ll match the pressing
-            </p>
-          </div>
+          )}
 
           <div className="divider-deco">
             <span className="font-body text-[8.5px] font-medium uppercase tracking-[.34em] text-cream/50">
@@ -248,50 +277,68 @@ function SearchPanel({
               ? `No matches for “${state.query}” — try fewer words or enter it manually.`
               : `Matches for “${state.query}” — pick your pressing:`}
           </p>
-          <ul className="flex flex-col divide-y divide-gold/15 border border-gold/30 bg-black/25">
-            {state.results.map((r) => (
-              <li key={r.releaseId}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(r)}
-                  disabled={selecting}
-                  className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition hover:bg-gold/10 disabled:opacity-50"
-                >
-                  {r.thumb ? (
-                    <Image
-                      src={r.thumb}
-                      alt=""
-                      width={40}
-                      height={40}
-                      className="h-10 w-10 shrink-0 border border-gold/30 object-cover"
-                    />
-                  ) : (
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-gold/30 bg-vault-mid text-xs text-gold">
-                      ♪
-                    </span>
-                  )}
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="truncate font-display text-[15px] text-cream">
-                      {r.title}
-                    </span>
-                    <span className="truncate font-body text-[9.5px] uppercase tracking-[.14em] text-cream/50">
-                      {[r.year, r.format, r.country, r.label, r.catno]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  </span>
-                  {r.owned && (
-                    <span className="gold-chip shrink-0">
-                      In your collection
-                    </span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
+          {state.results.length > 0 && (
+            <ResultList
+              results={state.results}
+              selecting={selecting}
+              onSelect={onSelect}
+            />
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+function ResultList({
+  results,
+  selecting,
+  onSelect,
+}: {
+  results: SearchResultView[];
+  selecting: boolean;
+  onSelect: (r: SearchResultView) => void;
+}) {
+  return (
+    <ul className="flex flex-col divide-y divide-gold/15 border border-gold/30 bg-black/25">
+      {results.map((r) => (
+        <li key={r.releaseId}>
+          <button
+            type="button"
+            onClick={() => onSelect(r)}
+            disabled={selecting}
+            className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition hover:bg-gold/10 disabled:opacity-50"
+          >
+            {r.thumb ? (
+              <Image
+                src={r.thumb}
+                alt=""
+                width={40}
+                height={40}
+                className="h-10 w-10 shrink-0 border border-gold/30 object-cover"
+              />
+            ) : (
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-gold/30 bg-vault-mid text-xs text-gold">
+                ♪
+              </span>
+            )}
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="truncate font-display text-[15px] text-cream">
+                {r.title}
+              </span>
+              <span className="truncate font-body text-[9.5px] uppercase tracking-[.14em] text-cream/50">
+                {[r.year, r.format, r.country, r.label, r.catno]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            </span>
+            {r.owned && (
+              <span className="gold-chip shrink-0">In your collection</span>
+            )}
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 

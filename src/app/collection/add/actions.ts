@@ -3,7 +3,14 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { getOrCreateCollection } from "@/lib/collections";
-import { getRelease } from "@/lib/discogs";
+import {
+  discogsConfigured,
+  getRelease,
+  searchReleases,
+  type DiscogsSearchResult,
+} from "@/lib/discogs";
+import { identifyConfigured, identifyCover } from "@/lib/identify";
+import { flagOwned, type SearchResultView } from "@/lib/search";
 import {
   addRecord,
   findRecordsByMasterIds,
@@ -65,6 +72,130 @@ export async function selectReleaseAction(
 }
 
 export type AddState = { error: string } | { added: string } | null;
+
+export type ScanState =
+  | { results: SearchResultView[]; kind: "barcode" | "cover" }
+  | { error: string }
+  | null;
+
+export async function lookupBarcodeAction(code: string): Promise<ScanState> {
+  const { userId } = await auth();
+  if (!userId) return { error: "You must be signed in." };
+  if (!discogsConfigured()) {
+    return { error: "Discogs search isn't configured yet." };
+  }
+
+  const barcode = code.trim();
+  if (!/^[0-9A-Za-z .$/+%*-]{4,32}$/.test(barcode)) {
+    return { error: "That barcode didn't read cleanly — try again." };
+  }
+
+  try {
+    let results = await searchReleases({ barcode });
+    // UPC-A and EAN-13 forms of the same barcode are catalogued
+    // inconsistently on Discogs, so retry with the other form on a miss.
+    if (results.length === 0 && /^\d{12}$/.test(barcode)) {
+      results = await searchReleases({ barcode: `0${barcode}` });
+    } else if (results.length === 0 && /^0\d{12}$/.test(barcode)) {
+      results = await searchReleases({ barcode: barcode.slice(1) });
+    }
+    return { results: await flagOwned(results, userId), kind: "barcode" };
+  } catch {
+    return { error: "Lookup failed — try again or search manually." };
+  }
+}
+
+const MAX_SCAN_BYTES = 4 * 1024 * 1024;
+
+export async function identifyCoverAction(
+  formData: FormData,
+): Promise<ScanState> {
+  const { userId } = await auth();
+  if (!userId) return { error: "You must be signed in." };
+  if (!discogsConfigured()) {
+    return { error: "Discogs search isn't configured yet." };
+  }
+  if (!identifyConfigured()) {
+    return { error: "Cover scanning isn't configured yet." };
+  }
+
+  const image = formData.get("image");
+  if (
+    !(image instanceof File) ||
+    !image.type.startsWith("image/") ||
+    image.size === 0
+  ) {
+    return { error: "That photo didn't come through — try again." };
+  }
+  if (image.size > MAX_SCAN_BYTES) {
+    return { error: "That photo is too large — try a tighter shot." };
+  }
+
+  try {
+    const data = Buffer.from(await image.arrayBuffer()).toString("base64");
+    const id = await identifyCover({ data, mimeType: image.type });
+    if (!id || (!id.artist && !id.title && !id.catno)) {
+      return {
+        error:
+          "Couldn't make out the cover — try a clearer shot or search manually.",
+      };
+    }
+
+    const searches: Promise<DiscogsSearchResult[]>[] = [];
+    if (id.catno) searches.push(searchReleases({ catno: id.catno }));
+    if (id.artist && id.title) {
+      searches.push(
+        searchReleases({
+          artist: id.artist,
+          releaseTitle: id.title,
+          label: id.label ?? undefined,
+        }),
+      );
+    }
+    const q = [id.artist, id.title].filter(Boolean).join(" ");
+    if (q) searches.push(searchReleases({ q }));
+
+    const settled = await Promise.allSettled(searches);
+    if (settled.every((s) => s.status === "rejected")) {
+      return { error: "Discogs isn't responding — try again in a moment." };
+    }
+    const lists = settled
+      .filter(
+        (s): s is PromiseFulfilledResult<DiscogsSearchResult[]> =>
+          s.status === "fulfilled",
+      )
+      .map((s) => s.value);
+
+    // Interleave the searches so one broad result set can't crowd out the
+    // others — a misread catno could otherwise fill all 20 slots.
+    const merged: DiscogsSearchResult[] = [];
+    const seen = new Set<number>();
+    const idx = lists.map(() => 0);
+    while (merged.length < 20) {
+      let progressed = false;
+      for (let j = 0; j < lists.length; j++) {
+        while (
+          idx[j] < lists[j].length &&
+          seen.has(lists[j][idx[j]].releaseId)
+        ) {
+          idx[j]++;
+        }
+        if (idx[j] < lists[j].length) {
+          seen.add(lists[j][idx[j]].releaseId);
+          merged.push(lists[j][idx[j]]);
+          idx[j]++;
+          progressed = true;
+        }
+      }
+      if (!progressed) break;
+    }
+    return { results: await flagOwned(merged, userId), kind: "cover" };
+  } catch {
+    return {
+      error: "Couldn't identify that cover — try again or search manually.",
+    };
+  }
+}
 
 function textField(formData: FormData, key: string): string {
   const raw = formData.get(key);

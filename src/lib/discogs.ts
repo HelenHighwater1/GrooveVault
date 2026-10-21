@@ -54,12 +54,28 @@ export type DiscogsSearchResult = {
   thumb: string | null;
 };
 
+export type ReleaseSearchParams = {
+  q?: string;
+  barcode?: string;
+  catno?: string;
+  artist?: string;
+  releaseTitle?: string;
+  label?: string;
+};
+
 export async function searchReleases(
-  query: string,
+  params: ReleaseSearchParams,
   signal?: AbortSignal,
 ): Promise<DiscogsSearchResult[]> {
+  const qs = new URLSearchParams({ type: "release", per_page: "20" });
+  if (params.q) qs.set("q", params.q);
+  if (params.barcode) qs.set("barcode", params.barcode);
+  if (params.catno) qs.set("catno", params.catno);
+  if (params.artist) qs.set("artist", params.artist);
+  if (params.releaseTitle) qs.set("release_title", params.releaseTitle);
+  if (params.label) qs.set("label", params.label);
   const data = await discogsFetch<SearchResponse>(
-    `/database/search?type=release&per_page=20&q=${encodeURIComponent(query)}`,
+    `/database/search?${qs.toString()}`,
     signal,
   );
   return data.results.map((r) => ({
