@@ -3,6 +3,12 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  experimental: {
+    serverActions: {
+      // Cover-photo scans upload a JPEG through identifyCoverAction.
+      bodySizeLimit: "4mb",
+    },
+  },
   async redirects() {
     return [
       {
