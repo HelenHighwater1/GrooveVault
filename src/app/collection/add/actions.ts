@@ -156,21 +156,40 @@ export async function identifyCoverAction(
     if (q) searches.push(searchReleases({ q }));
 
     const settled = await Promise.allSettled(searches);
-    const seen = new Set<number>();
+    if (settled.every((s) => s.status === "rejected")) {
+      return { error: "Discogs isn't responding — try again in a moment." };
+    }
+    const lists = settled
+      .filter(
+        (s): s is PromiseFulfilledResult<DiscogsSearchResult[]> =>
+          s.status === "fulfilled",
+      )
+      .map((s) => s.value);
+
+    // Interleave the searches so one broad result set can't crowd out the
+    // others — a misread catno could otherwise fill all 20 slots.
     const merged: DiscogsSearchResult[] = [];
-    for (const s of settled) {
-      if (s.status !== "fulfilled") continue;
-      for (const r of s.value) {
-        if (!seen.has(r.releaseId)) {
-          seen.add(r.releaseId);
-          merged.push(r);
+    const seen = new Set<number>();
+    const idx = lists.map(() => 0);
+    while (merged.length < 20) {
+      let progressed = false;
+      for (let j = 0; j < lists.length; j++) {
+        while (
+          idx[j] < lists[j].length &&
+          seen.has(lists[j][idx[j]].releaseId)
+        ) {
+          idx[j]++;
+        }
+        if (idx[j] < lists[j].length) {
+          seen.add(lists[j][idx[j]].releaseId);
+          merged.push(lists[j][idx[j]]);
+          idx[j]++;
+          progressed = true;
         }
       }
+      if (!progressed) break;
     }
-    return {
-      results: await flagOwned(merged.slice(0, 20), userId),
-      kind: "cover",
-    };
+    return { results: await flagOwned(merged, userId), kind: "cover" };
   } catch {
     return {
       error: "Couldn't identify that cover — try again or search manually.",

@@ -54,8 +54,12 @@ export function Scanner({
   const fileRef = useRef<HTMLInputElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const handledRef = useRef(false);
+  // Incremented on every start/stop so a start still in flight can tell it
+  // was cancelled and stop the controls it eventually returns.
+  const startIdRef = useRef(0);
 
   const stopCamera = useCallback(() => {
+    startIdRef.current++;
     controlsRef.current?.stop();
     controlsRef.current = null;
     const stream = videoRef.current?.srcObject;
@@ -104,11 +108,13 @@ export function Scanner({
       );
       return;
     }
+    const startId = ++startIdRef.current;
     try {
       // ZXing is loaded on demand so the ~300KB decoder stays out of the
       // initial bundle.
       const [{ BrowserMultiFormatReader }, { BarcodeFormat, DecodeHintType }] =
         await Promise.all([import("@zxing/browser"), import("@zxing/library")]);
+      if (startId !== startIdRef.current) return;
       const hints = new Map<DecodeHintType, unknown>();
       hints.set(DecodeHintType.POSSIBLE_FORMATS, [
         BarcodeFormat.UPC_A,
@@ -125,21 +131,28 @@ export function Scanner({
       });
       setLive(true);
       handledRef.current = false;
-      controlsRef.current = await reader.decodeFromConstraints(
+      const controls = await reader.decodeFromConstraints(
         { audio: false, video: { facingMode: "environment" } },
         video,
-        (result, _error, controls) => {
+        (result, _error, ctl) => {
           if (!result || handledRef.current) return;
           handledRef.current = true;
-          controls.stop();
+          ctl.stop();
           handleBarcode(result.getText());
         },
       );
+      // A cancel during decodeFromConstraints leaves nothing to stop until
+      // the call resolves — hand the controls to stopCamera so the late
+      // resolution still kills the stream.
+      controlsRef.current = controls;
+      if (startId !== startIdRef.current) stopCamera();
     } catch {
+      if (startId === startIdRef.current) {
+        setCameraError(
+          "Couldn't open the camera — allow access, or upload a photo instead.",
+        );
+      }
       stopCamera();
-      setCameraError(
-        "Couldn't open the camera — allow access, or upload a photo instead.",
-      );
     }
   }, [handleBarcode, stopCamera]);
 
