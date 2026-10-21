@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
+import { ApiError } from "@google/genai";
 import * as Sentry from "@sentry/nextjs";
 import { revalidatePath } from "next/cache";
 import { getOrCreateCollection } from "@/lib/collections";
@@ -193,8 +194,12 @@ export async function identifyCoverAction(
     return { results: await flagOwned(merged, userId), kind: "cover" };
   } catch (e) {
     Sentry.captureException(e);
+    const busy =
+      e instanceof ApiError && (e.status === 429 || e.status === 503);
     return {
-      error: "Couldn't identify that cover — try again or search manually.",
+      error: busy
+        ? "The identification service is busy — try again in a minute."
+        : "Couldn't identify that cover — try again or search manually.",
     };
   }
 }
