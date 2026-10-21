@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
+import * as Sentry from "@sentry/nextjs";
 import { revalidatePath } from "next/cache";
 import { getOrCreateCollection } from "@/lib/collections";
 import {
@@ -190,7 +191,8 @@ export async function identifyCoverAction(
       if (!progressed) break;
     }
     return { results: await flagOwned(merged, userId), kind: "cover" };
-  } catch {
+  } catch (e) {
+    Sentry.captureException(e);
     return {
       error: "Couldn't identify that cover — try again or search manually.",
     };

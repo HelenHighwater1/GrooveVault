@@ -2,7 +2,9 @@ import "server-only";
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-const MODEL = "gemini-2.5-flash";
+// Rolling alias — Google retires versioned model names quickly, and a
+// stale name fails with a 404 that reads like an identification failure.
+const MODEL = "gemini-flash-latest";
 
 export function identifyConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
