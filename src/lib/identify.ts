@@ -1,10 +1,12 @@
 import "server-only";
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { ApiError, GoogleGenAI, Type } from "@google/genai";
 
-// Rolling alias — Google retires versioned model names quickly, and a
+// Rolling aliases — Google retires versioned model names quickly, and a
 // stale name fails with a 404 that reads like an identification failure.
-const MODEL = "gemini-flash-latest";
+// Flash Lite is tried as a fallback when Flash is capacity-limited.
+const MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest"];
+const MAX_ATTEMPTS = 3;
 
 export function identifyConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
@@ -31,30 +33,49 @@ export async function identifyCover(image: {
   if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
 
   const ai = new GoogleGenAI({ apiKey });
-  const response = await ai.models.generateContent({
-    model: MODEL,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          { inlineData: { mimeType: image.mimeType, data: image.data } },
-          { text: PROMPT },
-        ],
-      },
-    ],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          artist: { type: Type.STRING, nullable: true },
-          title: { type: Type.STRING, nullable: true },
-          label: { type: Type.STRING, nullable: true },
-          catno: { type: Type.STRING, nullable: true },
+  const call = (model: string) =>
+    ai.models.generateContent({
+      model,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { mimeType: image.mimeType, data: image.data } },
+            { text: PROMPT },
+          ],
+        },
+      ],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            artist: { type: Type.STRING, nullable: true },
+            title: { type: Type.STRING, nullable: true },
+            label: { type: Type.STRING, nullable: true },
+            catno: { type: Type.STRING, nullable: true },
+          },
         },
       },
-    },
-  });
+    });
+
+  // The free tier 503s under demand spikes and 429s on rate limits — retry
+  // across both models before giving up.
+  let response;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    try {
+      response = await call(MODELS[attempt % MODELS.length]);
+      break;
+    } catch (e) {
+      lastError = e;
+      const retryable =
+        e instanceof ApiError && (e.status === 429 || e.status === 503);
+      if (!retryable || attempt === MAX_ATTEMPTS - 1) throw e;
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+  if (!response) throw lastError;
 
   const text = response.text;
   if (!text) return null;
