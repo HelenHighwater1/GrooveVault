@@ -48,6 +48,14 @@ export async function requireRole(
   }
 }
 
+export async function canWriteVault(
+  userId: string,
+  collectionId: string,
+): Promise<boolean> {
+  const role = await getMembership(userId, collectionId);
+  return role === "owner" || role === "member";
+}
+
 async function setActiveCollection(
   userId: string,
   collectionId: string,
@@ -83,12 +91,13 @@ async function createPersonalCollection(userId: string): Promise<Collection> {
   }
   if (!collection) throw insertError ?? new Error("Collection insert failed");
 
-  await supabase
+  const { error: membershipError } = await supabase
     .from("collection_members")
     .upsert(
       { collection_id: collection.id, user_id: userId, role: "owner" },
       { onConflict: "collection_id,user_id", ignoreDuplicates: true },
     );
+  if (membershipError) throw membershipError;
   return collection;
 }
 

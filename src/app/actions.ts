@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { resolveVault } from "@/lib/collections";
+import { canWriteVault, resolveVault } from "@/lib/collections";
 import {
   getRandomRecord,
   markRecordPlayed,
@@ -29,6 +29,9 @@ export async function markPlayedAction(
   if (!userId) return { error: "You must be signed in." };
 
   const collection = await resolveVault(userId);
+  if (!(await canWriteVault(userId, collection.id))) {
+    return { error: "You have view-only access to this vault." };
+  }
   const record = await markRecordPlayed(collection.id, recordId);
   if (!record?.last_played_at) {
     return { error: "That record isn't in your collection." };

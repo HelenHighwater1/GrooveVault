@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { ApiError } from "@google/genai";
 import * as Sentry from "@sentry/nextjs";
 import { revalidatePath } from "next/cache";
-import { resolveVault } from "@/lib/collections";
+import { canWriteVault, resolveVault } from "@/lib/collections";
 import {
   discogsConfigured,
   getRelease,
@@ -241,6 +241,9 @@ export async function addRecordAction(
 
   try {
     const collection = await resolveVault(userId);
+    if (!(await canWriteVault(userId, collection.id))) {
+      return { error: "You have view-only access to this vault." };
+    }
     await addRecord(collection.id, {
       artist,
       title,
