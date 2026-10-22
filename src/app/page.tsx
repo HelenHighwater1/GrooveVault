@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { currentUser } from "@clerk/nextjs/server";
 import { SignUpButton } from "@clerk/nextjs";
-import { getOrCreateCollection } from "@/lib/collections";
+import { resolveVault } from "@/lib/collections";
 import {
   countRecords,
   getCollectionStats,
@@ -42,7 +42,7 @@ export default async function Home() {
     );
   }
 
-  const collection = await getOrCreateCollection(user.id);
+  const collection = await resolveVault(user.id);
   const [total, stats, shelf, pick] = await Promise.all([
     countRecords(collection.id),
     getCollectionStats(collection.id),

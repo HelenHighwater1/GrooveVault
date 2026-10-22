@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getOrCreateCollection } from "@/lib/collections";
+import { resolveVault } from "@/lib/collections";
 import {
   discogsConfigured,
   searchReleases,
@@ -19,7 +19,7 @@ export async function flagOwned(
   results: DiscogsSearchResult[],
   userId: string,
 ): Promise<SearchResultView[]> {
-  const collection = await getOrCreateCollection(userId);
+  const collection = await resolveVault(userId);
   const masterIds = results
     .map((r) => r.masterId)
     .filter((id): id is number => id !== null);
