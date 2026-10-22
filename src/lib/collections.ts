@@ -70,24 +70,14 @@ async function setActiveCollection(
 }
 
 async function createPersonalCollection(userId: string): Promise<Collection> {
-  const supabase = getSupabase();
-  const { data: collection, error: insertError } = await supabase
-    .from("collections")
-    .insert({ owner_id: userId, name: DEFAULT_COLLECTION_NAME })
-    .select(COLLECTION_COLUMNS)
-    .single();
-  if (insertError || !collection) {
-    throw insertError ?? new Error("Collection insert failed");
-  }
-
-  const { error: membershipError } = await supabase
-    .from("collection_members")
-    .upsert(
-      { collection_id: collection.id, user_id: userId, role: "owner" },
-      { onConflict: "collection_id,user_id", ignoreDuplicates: true },
-    );
-  if (membershipError) throw membershipError;
-  return collection;
+  // Serialized per user inside the function — the loser of a create race
+  // gets the winner's vault back instead of making a duplicate.
+  const { data, error } = await getSupabase().rpc(
+    "create_personal_collection",
+    { p_user_id: userId, p_name: DEFAULT_COLLECTION_NAME },
+  );
+  if (error) throw error;
+  return getCollection(data as string);
 }
 
 // The vault a user is acting on: their stored active choice when the
