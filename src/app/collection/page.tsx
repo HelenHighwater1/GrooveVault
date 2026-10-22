@@ -2,42 +2,22 @@ import Image from "next/image";
 import Link from "next/link";
 import { clerkClient, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { listMembers, listVaults, resolveVault } from "@/lib/collections";
+import {
+  DEFAULT_COLLECTION_NAME,
+  listActiveInvites,
+  listMembers,
+  listVaults,
+  resolveVault,
+} from "@/lib/collections";
+import { memberLabel, selfLabel } from "@/lib/labels";
 import { countRecords, listRecords } from "@/lib/records";
 import { DecoDivider, Eyebrow, Panel, VinylDisc } from "@/components/deco";
+import { InvitePanel } from "./invite-panel";
 import { MembersPanel, type MemberView } from "./members-panel";
 import { RenameCollectionForm } from "./rename-form";
 import { VaultSwitcher } from "./vault-switcher";
 
 const PAGE_SIZE = 60;
-
-async function memberLabel(
-  clerk: Awaited<ReturnType<typeof clerkClient>>,
-  userId: string,
-): Promise<string> {
-  try {
-    const u = await clerk.users.getUser(userId);
-    const name = [u.firstName, u.lastName].filter(Boolean).join(" ");
-    const email = u.emailAddresses.find(
-      (e) => e.id === u.primaryEmailAddressId,
-    )?.emailAddress;
-    return name || email || u.username || "Vault member";
-  } catch {
-    return "Former member";
-  }
-}
-
-function selfLabel(user: {
-  firstName: string | null;
-  lastName: string | null;
-  username: string | null;
-  primaryEmailAddress: { emailAddress: string } | null;
-}): string {
-  const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
-  return (
-    name || user.primaryEmailAddress?.emailAddress || user.username || "you"
-  );
-}
 
 export default async function CollectionPage({
   searchParams,
@@ -49,12 +29,14 @@ export default async function CollectionPage({
   const page = Number.isInteger(requested) && requested > 0 ? requested : 1;
 
   const collection = await resolveVault(user.id);
-  const [records, total, vaults, memberRows] = await Promise.all([
+  const [records, total, vaults, memberRows, invites] = await Promise.all([
     listRecords(collection.id, PAGE_SIZE, (page - 1) * PAGE_SIZE),
     countRecords(collection.id),
     listVaults(user.id),
     listMembers(collection.id),
+    listActiveInvites(collection.id),
   ]);
+  const myRole = memberRows.find((m) => m.user_id === user.id)?.role ?? "owner";
 
   // The members panel only renders for shared vaults — skip the Clerk
   // lookups entirely when there's just the one member.
@@ -104,6 +86,21 @@ export default async function CollectionPage({
             Add a record
           </Link>
         </div>
+
+        {myRole === "owner" && (
+          <div className="flex justify-end">
+            <InvitePanel
+              key={collection.id}
+              collectionId={collection.id}
+              defaultName={collection.name === DEFAULT_COLLECTION_NAME}
+              invites={invites.map((i) => ({
+                id: i.id,
+                token: i.token,
+                expiresAt: i.expires_at,
+              }))}
+            />
+          </div>
+        )}
 
         <DecoDivider />
 

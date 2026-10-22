@@ -53,6 +53,16 @@ export async function countRecords(collectionId: string): Promise<number> {
   return count ?? 0;
 }
 
+export async function countRecordsIn(collectionIds: string[]): Promise<number> {
+  if (collectionIds.length === 0) return 0;
+  const { count, error } = await getSupabase()
+    .from("records")
+    .select("id", { count: "exact", head: true })
+    .in("collection_id", collectionIds);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function addRecord(
   collectionId: string,
   record: NewRecord,

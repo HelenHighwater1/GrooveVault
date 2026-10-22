@@ -2,13 +2,17 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import {
+  acceptInvite,
+  createInvite,
   deleteMembership,
   getMembership,
   leaveVault,
   renameCollection,
   requireRole,
   resolveVault,
+  revokeInvite,
   switchVault,
 } from "@/lib/collections";
 
@@ -86,6 +90,79 @@ export async function removeMemberAction(
 
   refresh();
   return null;
+}
+
+export type InviteState =
+  { token: string; expiresAt: string } | { error: string } | null;
+
+export async function createInviteAction(
+  _prev: InviteState,
+  formData: FormData,
+): Promise<InviteState> {
+  const { userId } = await auth();
+  if (!userId) return { error: "You must be signed in." };
+
+  const collectionId = formData.get("collection_id");
+  if (typeof collectionId !== "string" || !collectionId) {
+    return { error: "Missing vault." };
+  }
+
+  try {
+    const invite = await createInvite(userId, collectionId);
+    refresh();
+    return { token: invite.token, expiresAt: invite.expires_at };
+  } catch {
+    return { error: "Couldn't create a link — try again." };
+  }
+}
+
+export async function revokeInviteAction(
+  _prev: MemberActionState,
+  formData: FormData,
+): Promise<MemberActionState> {
+  const { userId } = await auth();
+  if (!userId) return { error: "You must be signed in." };
+
+  const inviteId = formData.get("invite_id");
+  if (typeof inviteId !== "string" || !inviteId) {
+    return { error: "Missing invite." };
+  }
+
+  try {
+    await revokeInvite(userId, inviteId);
+  } catch {
+    return { error: "Couldn't revoke it — try again." };
+  }
+
+  refresh();
+  return null;
+}
+
+export async function acceptInviteAction(
+  _prev: MemberActionState,
+  formData: FormData,
+): Promise<MemberActionState> {
+  const { userId } = await auth();
+  if (!userId) return { error: "You must be signed in." };
+
+  const token = formData.get("token");
+  if (typeof token !== "string" || !token) {
+    return { error: "Missing invite." };
+  }
+  const merge = formData.get("merge") === "true";
+
+  let collectionId: string | null = null;
+  try {
+    collectionId = await acceptInvite(userId, token, merge);
+    if (!collectionId) {
+      return { error: "This invite link has expired or was revoked." };
+    }
+    await switchVault(userId, collectionId);
+  } catch {
+    return { error: "Couldn't join — try again." };
+  }
+
+  redirect("/collection");
 }
 
 const LEAVE_ERRORS: Record<string, string> = {
