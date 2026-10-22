@@ -151,3 +151,77 @@ export async function renameCollection(
     .eq("id", collection.id);
   if (error) throw error;
 }
+
+export type Vault = Collection & { role: CollectionRole };
+
+// Every vault the user belongs to, oldest membership first — feeds the
+// vault switcher.
+export async function listVaults(userId: string): Promise<Vault[]> {
+  const { data, error } = await getSupabase()
+    .from("collection_members")
+    .select(
+      "role, joined_at, collections!inner(id, owner_id, name, created_at)",
+    )
+    .eq("user_id", userId)
+    .order("joined_at", { ascending: true });
+  if (error) throw error;
+
+  const rows = (data ?? []) as unknown as {
+    role: CollectionRole;
+    collections: Collection;
+  }[];
+  return rows.map((r) => ({ ...r.collections, role: r.role }));
+}
+
+// Point the user's active vault at another one they belong to. Returns null
+// when they aren't a member of the target.
+export async function switchVault(
+  userId: string,
+  collectionId: string,
+): Promise<Collection | null> {
+  const role = await getMembership(userId, collectionId);
+  if (!role) return null;
+  await setActiveCollection(userId, collectionId);
+  return getCollection(collectionId);
+}
+
+export type MemberRow = {
+  user_id: string;
+  role: CollectionRole;
+  joined_at: string;
+};
+
+export async function listMembers(collectionId: string): Promise<MemberRow[]> {
+  const { data, error } = await getSupabase()
+    .from("collection_members")
+    .select("user_id, role, joined_at")
+    .eq("collection_id", collectionId)
+    .order("joined_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as MemberRow[];
+}
+
+export async function setMemberRole(
+  collectionId: string,
+  userId: string,
+  role: CollectionRole,
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from("collection_members")
+    .update({ role })
+    .eq("collection_id", collectionId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function deleteMembership(
+  collectionId: string,
+  userId: string,
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from("collection_members")
+    .delete()
+    .eq("collection_id", collectionId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}

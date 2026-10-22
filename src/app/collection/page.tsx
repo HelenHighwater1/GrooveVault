@@ -1,13 +1,31 @@
 import Image from "next/image";
 import Link from "next/link";
-import { currentUser } from "@clerk/nextjs/server";
+import { clerkClient, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { resolveVault } from "@/lib/collections";
+import { listMembers, listVaults, resolveVault } from "@/lib/collections";
 import { countRecords, listRecords } from "@/lib/records";
 import { DecoDivider, Eyebrow, Panel, VinylDisc } from "@/components/deco";
+import { MembersPanel, type MemberView } from "./members-panel";
 import { RenameCollectionForm } from "./rename-form";
+import { VaultSwitcher } from "./vault-switcher";
 
 const PAGE_SIZE = 60;
+
+async function memberLabel(
+  clerk: Awaited<ReturnType<typeof clerkClient>>,
+  userId: string,
+): Promise<string> {
+  try {
+    const u = await clerk.users.getUser(userId);
+    const name = [u.firstName, u.lastName].filter(Boolean).join(" ");
+    const email = u.emailAddresses.find(
+      (e) => e.id === u.primaryEmailAddressId,
+    )?.emailAddress;
+    return name || email || u.username || "Vault member";
+  } catch {
+    return "Former member";
+  }
+}
 
 export default async function CollectionPage({
   searchParams,
@@ -19,10 +37,21 @@ export default async function CollectionPage({
   const page = Number.isInteger(requested) && requested > 0 ? requested : 1;
 
   const collection = await resolveVault(user.id);
-  const [records, total] = await Promise.all([
+  const [records, total, vaults, memberRows] = await Promise.all([
     listRecords(collection.id, PAGE_SIZE, (page - 1) * PAGE_SIZE),
     countRecords(collection.id),
+    listVaults(user.id),
+    listMembers(collection.id),
   ]);
+
+  const clerk = await clerkClient();
+  const members: MemberView[] = await Promise.all(
+    memberRows.map(async (m) => ({
+      userId: m.user_id,
+      role: m.role,
+      label: await memberLabel(clerk, m.user_id),
+    })),
+  );
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   if (page > 1 && page > totalPages) {
@@ -44,6 +73,9 @@ export default async function CollectionPage({
             <p className="font-body text-[11px] uppercase tracking-[.18em] text-cream/45">
               Signed in as {user.primaryEmailAddress?.emailAddress ?? user.id}
             </p>
+            {vaults.length > 1 && (
+              <VaultSwitcher vaults={vaults} activeId={collection.id} />
+            )}
             <RenameCollectionForm currentName={collection.name} />
           </div>
           <Link href="/collection/add" className="btn-gold">
@@ -133,6 +165,16 @@ export default async function CollectionPage({
               <span className="btn-ghost px-5 py-3 opacity-40">Next</span>
             )}
           </nav>
+        )}
+
+        {members.length > 1 && (
+          <>
+            <DecoDivider />
+            <div className="flex flex-col gap-3">
+              <Eyebrow>Members</Eyebrow>
+              <MembersPanel members={members} me={user.id} />
+            </div>
+          </>
         )}
       </Panel>
     </main>
