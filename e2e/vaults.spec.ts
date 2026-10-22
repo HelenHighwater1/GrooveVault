@@ -3,7 +3,10 @@ import { expect, test, type Page } from "@playwright/test";
 import { signUpTestUser, testEmail } from "./helpers";
 
 // Two full sign-up flows plus several navigations per test.
-test.describe.configure({ timeout: 90_000 });
+// Serial keeps this spec's Clerk sign-ups sequential — the dev instance's
+// usage limits throttle sign-up bursts under fullyParallel, which turns an
+// otherwise-harmless waitForResponse into a silent hang.
+test.describe.configure({ mode: "serial", timeout: 90_000 });
 
 async function renameVault(page: Page, name: string) {
   await page.goto("/collection");
@@ -138,20 +141,24 @@ test("an anonymous invitee can sign up from the invite link", async ({
     await pageB.goto(url);
     await expect(pageB).toHaveURL(/sign-in/);
     await pageB.getByRole("link", { name: /sign up/i }).click();
+    await expect(pageB).toHaveURL(/sign-up/);
 
     await pageB.getByRole("textbox", { name: /email/i }).fill(testEmail());
     await pageB
       .getByRole("textbox", { name: /password/i })
       .fill(`Groove-${Date.now()}!`);
+    // Bounded so a throttled sign-up fails fast and retries instead of
+    // hanging until the test timeout.
     const preparedVerification = pageB.waitForResponse(
       (resp) =>
         resp.url().includes("prepare_verification") && resp.status() === 200,
+      { timeout: 30_000 },
     );
     await pageB.getByRole("button", { name: "Continue", exact: true }).click();
     await preparedVerification;
     await pageB
       .getByRole("textbox", { name: /code/i })
-      .pressSequentially("424242");
+      .pressSequentially("424242", { timeout: 15_000 });
 
     await expect(pageB).toHaveURL(/\/invite\//, { timeout: 30_000 });
     await expect(
