@@ -90,6 +90,7 @@ export default async function CollectionPage({
         {myRole === "owner" && (
           <div className="flex justify-end">
             <InvitePanel
+              key={collection.id}
               collectionId={collection.id}
               defaultName={collection.name === DEFAULT_COLLECTION_NAME}
               invites={invites.map((i) => ({

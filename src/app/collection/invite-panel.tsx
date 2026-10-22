@@ -69,7 +69,10 @@ export function InvitePanel({
         </div>
       )}
 
-      <NewInviteForm collectionId={collectionId} />
+      <NewInviteForm
+        collectionId={collectionId}
+        liveTokens={new Set(invites.map((i) => i.token))}
+      />
 
       {invites.length > 0 && (
         <ul className="flex flex-col gap-2 border-t border-gold/20 pt-3">
@@ -87,9 +90,18 @@ export function InvitePanel({
   );
 }
 
-function NewInviteForm({ collectionId }: { collectionId: string }) {
+function NewInviteForm({
+  collectionId,
+  liveTokens,
+}: {
+  collectionId: string;
+  liveTokens: Set<string>;
+}) {
   const [state, formAction, pending] = useActionState(createInviteAction, null);
-  const created = state && "token" in state ? state : null;
+  // Only keep showing a fresh link while it's still live — a revoke clears
+  // it from the copy field once the server list updates.
+  const created =
+    state && "token" in state && liveTokens.has(state.token) ? state : null;
 
   return (
     <div className="flex flex-col gap-3">
