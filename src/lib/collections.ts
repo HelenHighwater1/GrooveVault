@@ -70,35 +70,14 @@ async function setActiveCollection(
 }
 
 async function createPersonalCollection(userId: string): Promise<Collection> {
-  const supabase = getSupabase();
-  const { data: created, error: insertError } = await supabase
-    .from("collections")
-    .insert({ owner_id: userId, name: DEFAULT_COLLECTION_NAME })
-    .select(COLLECTION_COLUMNS)
-    .single();
-
-  let collection = created;
-  if (insertError) {
-    // Concurrent first-load can race the insert; the collections.owner_id
-    // unique constraint means only one row wins — re-select it.
-    const { data, error } = await supabase
-      .from("collections")
-      .select(COLLECTION_COLUMNS)
-      .eq("owner_id", userId)
-      .single();
-    if (error) throw insertError;
-    collection = data;
-  }
-  if (!collection) throw insertError ?? new Error("Collection insert failed");
-
-  const { error: membershipError } = await supabase
-    .from("collection_members")
-    .upsert(
-      { collection_id: collection.id, user_id: userId, role: "owner" },
-      { onConflict: "collection_id,user_id", ignoreDuplicates: true },
-    );
-  if (membershipError) throw membershipError;
-  return collection;
+  // Serialized per user inside the function — the loser of a create race
+  // gets the winner's vault back instead of making a duplicate.
+  const { data, error } = await getSupabase().rpc(
+    "create_personal_collection",
+    { p_user_id: userId, p_name: DEFAULT_COLLECTION_NAME },
+  );
+  if (error) throw error;
+  return getCollection(data as string);
 }
 
 // The vault a user is acting on: their stored active choice when the
@@ -140,14 +119,114 @@ export async function resolveVault(userId: string): Promise<Collection> {
 
 export async function renameCollection(
   userId: string,
+  collectionId: string,
   name: string,
 ): Promise<void> {
-  const collection = await resolveVault(userId);
-  await requireRole(userId, collection.id, ["owner"]);
+  await requireRole(userId, collectionId, ["owner"]);
 
   const { error } = await getSupabase()
     .from("collections")
     .update({ name })
-    .eq("id", collection.id);
+    .eq("id", collectionId);
+  if (error) throw error;
+}
+
+export type LeaveVaultResult =
+  "not_a_member" | "sole_member" | "successor_required" | null;
+
+// One locked DB op: promotes the successor when the sole owner leaves a
+// shared vault, then removes the leaver's membership.
+export async function leaveVault(
+  userId: string,
+  collectionId: string,
+  successorId?: string,
+): Promise<LeaveVaultResult> {
+  const { error } = await getSupabase().rpc("leave_collection", {
+    p_collection_id: collectionId,
+    p_user_id: userId,
+    p_successor_id: successorId ?? null,
+  });
+  if (!error) return null;
+  for (const code of [
+    "not_a_member",
+    "sole_member",
+    "successor_required",
+  ] as const) {
+    if (error.message.includes(code)) return code;
+  }
+  throw error;
+}
+
+export type Vault = Collection & { role: CollectionRole };
+
+// Every vault the user belongs to, oldest membership first — feeds the
+// vault switcher.
+export async function listVaults(userId: string): Promise<Vault[]> {
+  const { data, error } = await getSupabase()
+    .from("collection_members")
+    .select(
+      "role, joined_at, collections!inner(id, owner_id, name, created_at)",
+    )
+    .eq("user_id", userId)
+    .order("joined_at", { ascending: true });
+  if (error) throw error;
+
+  const rows = (data ?? []) as unknown as {
+    role: CollectionRole;
+    collections: Collection;
+  }[];
+  return rows.map((r) => ({ ...r.collections, role: r.role }));
+}
+
+// Point the user's active vault at another one they belong to. Returns null
+// when they aren't a member of the target.
+export async function switchVault(
+  userId: string,
+  collectionId: string,
+): Promise<Collection | null> {
+  const role = await getMembership(userId, collectionId);
+  if (!role) return null;
+  await setActiveCollection(userId, collectionId);
+  return getCollection(collectionId);
+}
+
+export type MemberRow = {
+  user_id: string;
+  role: CollectionRole;
+  joined_at: string;
+};
+
+export async function listMembers(collectionId: string): Promise<MemberRow[]> {
+  const { data, error } = await getSupabase()
+    .from("collection_members")
+    .select("user_id, role, joined_at")
+    .eq("collection_id", collectionId)
+    .order("joined_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as MemberRow[];
+}
+
+export async function setMemberRole(
+  collectionId: string,
+  userId: string,
+  role: CollectionRole,
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from("collection_members")
+    .update({ role })
+    .eq("collection_id", collectionId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function deleteMembership(
+  collectionId: string,
+  userId: string,
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from("collection_members")
+    .delete()
+    .eq("collection_id", collectionId)
+    .eq("user_id", userId);
   if (error) throw error;
 }
