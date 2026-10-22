@@ -16,6 +16,7 @@ export type CollectionRecord = {
   cover_image_url: string | null;
   discogs_release_id: number | null;
   discogs_master_id: number | null;
+  added_by: string | null;
   last_played_at: string | null;
   created_at: string;
 };
@@ -26,7 +27,7 @@ export type NewRecord = Omit<
 >;
 
 const COLUMNS =
-  "id, collection_id, artist, title, year, format, genres, styles, country, label, catno, cover_image_url, discogs_release_id, discogs_master_id, last_played_at, created_at";
+  "id, collection_id, artist, title, year, format, genres, styles, country, label, catno, cover_image_url, discogs_release_id, discogs_master_id, added_by, last_played_at, created_at";
 
 export async function listRecords(
   collectionId: string,

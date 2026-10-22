@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { ApiError } from "@google/genai";
 import * as Sentry from "@sentry/nextjs";
 import { revalidatePath } from "next/cache";
-import { getOrCreateCollection } from "@/lib/collections";
+import { resolveVault } from "@/lib/collections";
 import {
   discogsConfigured,
   getRelease,
@@ -47,7 +47,7 @@ export async function selectReleaseAction(
 
   try {
     const release = await getRelease(releaseId);
-    const collection = await getOrCreateCollection(userId);
+    const collection = await resolveVault(userId);
     const ownedPressings = release.masterId
       ? await findRecordsByMasterIds(collection.id, [release.masterId])
       : [];
@@ -240,10 +240,11 @@ export async function addRecordAction(
   }
 
   try {
-    const collection = await getOrCreateCollection(userId);
+    const collection = await resolveVault(userId);
     await addRecord(collection.id, {
       artist,
       title,
+      added_by: userId,
       year,
       format: textField(formData, "format") || null,
       genres: listField(formData, "genres"),

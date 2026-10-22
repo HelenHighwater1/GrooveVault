@@ -1,6 +1,6 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { getOrCreateCollection } from "@/lib/collections";
+import { resolveVault } from "@/lib/collections";
 import { countRecords } from "@/lib/records";
 import { discogsConfigured } from "@/lib/discogs";
 import { searchDiscogs } from "@/lib/search";
@@ -14,7 +14,7 @@ export default async function AddRecordPage({
   const user = await currentUser();
   if (!user) redirect("/sign-in");
 
-  const collection = await getOrCreateCollection(user.id);
+  const collection = await resolveVault(user.id);
   const total = await countRecords(collection.id);
 
   // A native (pre-hydration or no-JS) form submit lands here as

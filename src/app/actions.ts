@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { getOrCreateCollection } from "@/lib/collections";
+import { resolveVault } from "@/lib/collections";
 import {
   getRandomRecord,
   markRecordPlayed,
@@ -14,7 +14,7 @@ export async function rerollPickAction(excludeId: string): Promise<PickResult> {
   const { userId } = await auth();
   if (!userId) return { error: "You must be signed in." };
 
-  const collection = await getOrCreateCollection(userId);
+  const collection = await resolveVault(userId);
   const record = await getRandomRecord(collection.id, [excludeId]);
   if (!record) return { error: "No other records to pick." };
   return { record };
@@ -28,7 +28,7 @@ export async function markPlayedAction(
   const { userId } = await auth();
   if (!userId) return { error: "You must be signed in." };
 
-  const collection = await getOrCreateCollection(userId);
+  const collection = await resolveVault(userId);
   const record = await markRecordPlayed(collection.id, recordId);
   if (!record?.last_played_at) {
     return { error: "That record isn't in your collection." };

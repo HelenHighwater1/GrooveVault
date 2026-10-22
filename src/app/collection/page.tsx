@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { getOrCreateCollection } from "@/lib/collections";
+import { resolveVault } from "@/lib/collections";
 import { countRecords, listRecords } from "@/lib/records";
 import { DecoDivider, Eyebrow, Panel, VinylDisc } from "@/components/deco";
 import { RenameCollectionForm } from "./rename-form";
@@ -18,7 +18,7 @@ export default async function CollectionPage({
   const requested = Number((await searchParams).page);
   const page = Number.isInteger(requested) && requested > 0 ? requested : 1;
 
-  const collection = await getOrCreateCollection(user.id);
+  const collection = await resolveVault(user.id);
   const [records, total] = await Promise.all([
     listRecords(collection.id, PAGE_SIZE, (page - 1) * PAGE_SIZE),
     countRecords(collection.id),
