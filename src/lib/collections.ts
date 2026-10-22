@@ -10,7 +10,7 @@ export type Collection = {
 
 export type CollectionRole = "owner" | "member" | "viewer";
 
-const DEFAULT_COLLECTION_NAME = "My collection";
+export const DEFAULT_COLLECTION_NAME = "My collection";
 const COLLECTION_COLUMNS = "id, owner_id, name, created_at";
 
 async function getCollection(id: string): Promise<Collection> {
@@ -229,4 +229,163 @@ export async function deleteMembership(
     .eq("collection_id", collectionId)
     .eq("user_id", userId);
   if (error) throw error;
+}
+
+export type Invite = {
+  id: string;
+  collection_id: string;
+  inviter_id: string;
+  token: string;
+  status: "active" | "revoked";
+  expires_at: string;
+  created_at: string;
+};
+
+const INVITE_COLUMNS =
+  "id, collection_id, inviter_id, token, status, expires_at, created_at";
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+export async function createInvite(
+  userId: string,
+  collectionId: string,
+): Promise<Invite> {
+  await requireRole(userId, collectionId, ["owner"]);
+
+  const { data, error } = await getSupabase()
+    .from("collection_invites")
+    .insert({
+      collection_id: collectionId,
+      inviter_id: userId,
+      token: crypto.randomUUID(),
+      expires_at: new Date(Date.now() + INVITE_TTL_MS).toISOString(),
+    })
+    .select(INVITE_COLUMNS)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function listActiveInvites(
+  collectionId: string,
+): Promise<Invite[]> {
+  const { data, error } = await getSupabase()
+    .from("collection_invites")
+    .select(INVITE_COLUMNS)
+    .eq("collection_id", collectionId)
+    .eq("status", "active")
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Invite[];
+}
+
+export async function revokeInvite(
+  userId: string,
+  inviteId: string,
+): Promise<void> {
+  const { data: invite, error: lookupError } = await getSupabase()
+    .from("collection_invites")
+    .select("collection_id")
+    .eq("id", inviteId)
+    .single();
+  if (lookupError) throw lookupError;
+
+  await requireRole(userId, invite.collection_id, ["owner"]);
+
+  const { error } = await getSupabase()
+    .from("collection_invites")
+    .update({ status: "revoked" })
+    .eq("id", inviteId);
+  if (error) throw error;
+}
+
+export type InviteDetails = {
+  token: string;
+  collectionId: string;
+  collectionName: string;
+  inviterId: string;
+};
+
+// The link itself is the authorization — anyone holding a live token can see
+// which vault it joins. Revoked and expired links read as invalid.
+export async function getInviteByToken(
+  token: string,
+): Promise<InviteDetails | null> {
+  const { data, error } = await getSupabase()
+    .from("collection_invites")
+    .select(
+      "token, inviter_id, collection_id, status, expires_at, collections!inner(name)",
+    )
+    .eq("token", token)
+    .maybeSingle();
+  if (error) throw error;
+  if (
+    !data ||
+    data.status !== "active" ||
+    new Date(data.expires_at) <= new Date()
+  ) {
+    return null;
+  }
+
+  const row = data as unknown as {
+    token: string;
+    inviter_id: string;
+    collection_id: string;
+    collections: { name: string };
+  };
+  return {
+    token: row.token,
+    collectionId: row.collection_id,
+    collectionName: row.collections.name,
+    inviterId: row.inviter_id,
+  };
+}
+
+// Accept is one locked DB op — see the accept_invite migration. Returns the
+// joined collection's id, or null for a dead/revoked/expired token.
+export async function acceptInvite(
+  userId: string,
+  token: string,
+  merge: boolean,
+): Promise<string | null> {
+  const { data, error } = await getSupabase().rpc("accept_invite", {
+    p_token: token,
+    p_user_id: userId,
+    p_merge: merge,
+  });
+  if (error) {
+    if (error.message.includes("invite_invalid")) return null;
+    throw error;
+  }
+  return data as string;
+}
+
+// Vaults where the user is the only member — the ones "merge my records in"
+// would fold into the shared vault.
+export async function listMergeableVaultIds(
+  userId: string,
+  excludeCollectionId: string,
+): Promise<string[]> {
+  const supabase = getSupabase();
+  const { data: mine, error: mineError } = await supabase
+    .from("collection_members")
+    .select("collection_id")
+    .eq("user_id", userId)
+    .neq("collection_id", excludeCollectionId);
+  if (mineError) throw mineError;
+
+  const ids = (mine ?? []).map((m) => m.collection_id);
+  if (ids.length === 0) return [];
+
+  const { data: all, error: allError } = await supabase
+    .from("collection_members")
+    .select("collection_id")
+    .in("collection_id", ids);
+  if (allError) throw allError;
+
+  const counts = new Map<string, number>();
+  for (const row of all ?? []) {
+    counts.set(row.collection_id, (counts.get(row.collection_id) ?? 0) + 1);
+  }
+  return ids.filter((id) => counts.get(id) === 1);
 }
