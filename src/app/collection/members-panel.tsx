@@ -10,9 +10,11 @@ export type MemberView = {
 };
 
 export function MembersPanel({
+  collectionId,
   members,
   me,
 }: {
+  collectionId: string;
   members: MemberView[];
   me: string;
 }) {
@@ -44,23 +46,36 @@ export function MembersPanel({
           {m.userId === me
             ? canLeave && (
                 <LeaveVaultButton
+                  collectionId={collectionId}
                   successors={
                     needsSuccessor ? members.filter((s) => s.userId !== me) : []
                   }
                 />
               )
             : mine?.role === "owner" &&
-              m.role !== "owner" && <RemoveMemberButton userId={m.userId} />}
+              m.role !== "owner" && (
+                <RemoveMemberButton
+                  collectionId={collectionId}
+                  userId={m.userId}
+                />
+              )}
         </li>
       ))}
     </ul>
   );
 }
 
-function RemoveMemberButton({ userId }: { userId: string }) {
+function RemoveMemberButton({
+  collectionId,
+  userId,
+}: {
+  collectionId: string;
+  userId: string;
+}) {
   const [state, formAction, pending] = useActionState(removeMemberAction, null);
   return (
     <form action={formAction} className="flex items-center gap-2">
+      <input type="hidden" name="collection_id" value={collectionId} />
       <input type="hidden" name="user_id" value={userId} />
       <button
         type="submit"
@@ -78,7 +93,13 @@ function RemoveMemberButton({ userId }: { userId: string }) {
   );
 }
 
-function LeaveVaultButton({ successors }: { successors: MemberView[] }) {
+function LeaveVaultButton({
+  collectionId,
+  successors,
+}: {
+  collectionId: string;
+  successors: MemberView[];
+}) {
   const [confirming, setConfirming] = useState(false);
   const [state, formAction, pending] = useActionState(leaveVaultAction, null);
 
@@ -96,6 +117,7 @@ function LeaveVaultButton({ successors }: { successors: MemberView[] }) {
 
   return (
     <form action={formAction} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="collection_id" value={collectionId} />
       {successors.length > 0 && (
         <select
           name="successor_id"

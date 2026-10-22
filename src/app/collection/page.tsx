@@ -27,6 +27,18 @@ async function memberLabel(
   }
 }
 
+function selfLabel(user: {
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+  primaryEmailAddress: { emailAddress: string } | null;
+}): string {
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
+  return (
+    name || user.primaryEmailAddress?.emailAddress || user.username || "you"
+  );
+}
+
 export default async function CollectionPage({
   searchParams,
 }: PageProps<"/collection">) {
@@ -44,14 +56,21 @@ export default async function CollectionPage({
     listMembers(collection.id),
   ]);
 
-  const clerk = await clerkClient();
-  const members: MemberView[] = await Promise.all(
-    memberRows.map(async (m) => ({
-      userId: m.user_id,
-      role: m.role,
-      label: await memberLabel(clerk, m.user_id),
-    })),
-  );
+  // The members panel only renders for shared vaults — skip the Clerk
+  // lookups entirely when there's just the one member.
+  const clerk = memberRows.length > 1 ? await clerkClient() : null;
+  const members: MemberView[] = clerk
+    ? await Promise.all(
+        memberRows.map(async (m) => ({
+          userId: m.user_id,
+          role: m.role,
+          label:
+            m.user_id === user.id
+              ? selfLabel(user)
+              : await memberLabel(clerk, m.user_id),
+        })),
+      )
+    : [];
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   if (page > 1 && page > totalPages) {
@@ -76,7 +95,10 @@ export default async function CollectionPage({
             {vaults.length > 1 && (
               <VaultSwitcher vaults={vaults} activeId={collection.id} />
             )}
-            <RenameCollectionForm currentName={collection.name} />
+            <RenameCollectionForm
+              collectionId={collection.id}
+              currentName={collection.name}
+            />
           </div>
           <Link href="/collection/add" className="btn-gold">
             Add a record
@@ -172,7 +194,11 @@ export default async function CollectionPage({
             <DecoDivider />
             <div className="flex flex-col gap-3">
               <Eyebrow>Members</Eyebrow>
-              <MembersPanel members={members} me={user.id} />
+              <MembersPanel
+                collectionId={collection.id}
+                members={members}
+                me={user.id}
+              />
             </div>
           </>
         )}

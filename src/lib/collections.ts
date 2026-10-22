@@ -71,25 +71,14 @@ async function setActiveCollection(
 
 async function createPersonalCollection(userId: string): Promise<Collection> {
   const supabase = getSupabase();
-  const { data: created, error: insertError } = await supabase
+  const { data: collection, error: insertError } = await supabase
     .from("collections")
     .insert({ owner_id: userId, name: DEFAULT_COLLECTION_NAME })
     .select(COLLECTION_COLUMNS)
     .single();
-
-  let collection = created;
-  if (insertError) {
-    // Concurrent first-load can race the insert; the collections.owner_id
-    // unique constraint means only one row wins — re-select it.
-    const { data, error } = await supabase
-      .from("collections")
-      .select(COLLECTION_COLUMNS)
-      .eq("owner_id", userId)
-      .single();
-    if (error) throw insertError;
-    collection = data;
+  if (insertError || !collection) {
+    throw insertError ?? new Error("Collection insert failed");
   }
-  if (!collection) throw insertError ?? new Error("Collection insert failed");
 
   const { error: membershipError } = await supabase
     .from("collection_members")
@@ -140,16 +129,42 @@ export async function resolveVault(userId: string): Promise<Collection> {
 
 export async function renameCollection(
   userId: string,
+  collectionId: string,
   name: string,
 ): Promise<void> {
-  const collection = await resolveVault(userId);
-  await requireRole(userId, collection.id, ["owner"]);
+  await requireRole(userId, collectionId, ["owner"]);
 
   const { error } = await getSupabase()
     .from("collections")
     .update({ name })
-    .eq("id", collection.id);
+    .eq("id", collectionId);
   if (error) throw error;
+}
+
+export type LeaveVaultResult =
+  "not_a_member" | "sole_member" | "successor_required" | null;
+
+// One locked DB op: promotes the successor when the sole owner leaves a
+// shared vault, then removes the leaver's membership.
+export async function leaveVault(
+  userId: string,
+  collectionId: string,
+  successorId?: string,
+): Promise<LeaveVaultResult> {
+  const { error } = await getSupabase().rpc("leave_collection", {
+    p_collection_id: collectionId,
+    p_user_id: userId,
+    p_successor_id: successorId ?? null,
+  });
+  if (!error) return null;
+  for (const code of [
+    "not_a_member",
+    "sole_member",
+    "successor_required",
+  ] as const) {
+    if (error.message.includes(code)) return code;
+  }
+  throw error;
 }
 
 export type Vault = Collection & { role: CollectionRole };

@@ -3,7 +3,13 @@
 import { useActionState } from "react";
 import { renameCollectionAction } from "./actions";
 
-export function RenameCollectionForm({ currentName }: { currentName: string }) {
+export function RenameCollectionForm({
+  collectionId,
+  currentName,
+}: {
+  collectionId: string;
+  currentName: string;
+}) {
   const [state, formAction, pending] = useActionState(
     renameCollectionAction,
     null,
@@ -11,6 +17,7 @@ export function RenameCollectionForm({ currentName }: { currentName: string }) {
 
   return (
     <form action={formAction} className="flex flex-col gap-2">
+      <input type="hidden" name="collection_id" value={collectionId} />
       <div className="flex items-stretch gap-2">
         <input
           type="text"
